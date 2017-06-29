@@ -96,7 +96,7 @@ bool Bzr::isValid(String *error) const
 
     int e = 0;
     e += !tag.empty();
-    e += revision != 0;
+    e += revision != -1;
 
 
     if (e == 0)
@@ -424,7 +424,7 @@ void DownloadSource::operator()(const Bzr &bzr)
 
             if (!bzr.tag.empty())
                 run("bzr update -r tag:" + bzr.tag);
-            else if (bzr.revision != 0)
+            else if (bzr.revision != -1)
                 run("bzr update -r " + std::to_string(bzr.revision));
 
             fs::current_path(p);
@@ -532,7 +532,7 @@ Source load_source(const ptree &p)
         Bzr bzr;
         bzr.url = p.get("source.bzr.url", "");
         bzr.tag = p.get("source.bzr.tag", "");
-        bzr.revision = p.get("source.bzr.revision", 0);
+        bzr.revision = p.get("source.bzr.revision", -1);
         if (!bzr.empty())
             return bzr;
     }
@@ -592,7 +592,7 @@ void save_source(ptree &p, const Source &source)
         p.add("source.bzr.url", bzr.url);
         if (!bzr.tag.empty())
             p.add("source.bzr.tag", bzr.tag);
-        if (bzr.revision != 0)
+        if (bzr.revision != -1)
             p.add("source.bzr.revision", bzr.revision);
     },
         [&p](const RemoteFile &rf)
@@ -659,7 +659,7 @@ String print_source(const Source &source)
         r += "url: " + bzr.url + "\n";
         if (!bzr.tag.empty())
             r += "tag: " + bzr.tag + "\n";
-        if (bzr.revision != 0)
+        if (bzr.revision != -1)
             r += "revision: " + std::to_string(bzr.revision) + "\n";
         return r;
     },

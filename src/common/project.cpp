@@ -376,9 +376,6 @@ void load_source_and_version(const yaml &root, Source &source, Version &version)
 
         if (version.isValid() && bzr.tag.empty() && bzr.revision == -1)
         {
-            if (version.isBranch())
-                bzr.branch = version.toString();
-            else
                 bzr.tag = version.toString();
         }
     }

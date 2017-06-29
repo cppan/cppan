@@ -51,10 +51,13 @@ struct Hg : Git
     }
 };
 
-struct Bzr : Git
+struct Bzr
 {
-    int64_t  revision = 0;
+    String url;
+    String tag;
+    int64_t  revision = -1;
 
+    bool empty() const { return url.empty(); }
     bool isValid(String *error = nullptr) const;
     bool operator==(const Bzr &rhs) const
     {
