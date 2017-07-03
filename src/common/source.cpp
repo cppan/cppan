@@ -369,7 +369,11 @@ void save_source(yaml &root, const Source &source)
 
     boost::apply_visitor(save_source, source);
 }
-
+void DownloadSource::run(const String &c)
+{
+    if (std::system(c.c_str()) != 0)
+        throw std::runtime_error("Last command failed: " + c);
+}
 void DownloadSource::operator()(const Git &git)
 {
     // try to speed up git downloads from github
@@ -418,12 +422,6 @@ void DownloadSource::operator()(const Git &git)
         return;
 #endif
 
-    auto run = [](const String &c)
-    {
-        if (std::system(c.c_str()) != 0)
-            throw std::runtime_error("Last command failed: " + c);
-    };
-
     int n_tries = 3;
     while (n_tries--)
     {
@@ -453,12 +451,6 @@ void DownloadSource::operator()(const Git &git)
 
 void DownloadSource::operator()(const Hg &hg)
 {
-    auto run = [](const String &c)
-    {
-        if (std::system(c.c_str()) != 0)
-            throw std::runtime_error("Last command failed: " + c);
-    };
-
     int n_tries = 3;
     while (n_tries--)
     {
@@ -487,12 +479,6 @@ void DownloadSource::operator()(const Hg &hg)
 
 void DownloadSource::operator()(const Bzr &bzr)
 {
-    auto run = [](const String &c)
-    {
-        if (std::system(c.c_str()) != 0)
-            throw std::runtime_error("Last command failed: " + c);
-    };
-
     int n_tries = 3;
     while (n_tries--)
     {
@@ -522,12 +508,6 @@ void DownloadSource::operator()(const Bzr &bzr)
 
 void DownloadSource::operator()(const Fossil &fossil)
 {
-    auto run = [](const String &c)
-    {
-        if (std::system(c.c_str()) != 0)
-            throw std::runtime_error("Last command failed: " + c);
-    };
-
     int n_tries = 3;
     while (n_tries--)
     {
