@@ -55,13 +55,25 @@ struct Bzr
 {
     String url;
     String tag;
-    int64_t  revision = -1;
+    int64_t revision = -1;
 
     bool empty() const { return url.empty(); }
     bool isValid(String *error = nullptr) const;
     bool operator==(const Bzr &rhs) const
     {
         return std::tie(url, tag, revision) == std::tie(rhs.url, rhs.tag, rhs.revision);
+    }
+};
+
+struct Fossil : Git
+{
+    String projectName;
+
+    bool emptyName() const { return projectName.empty(); }
+    bool isValid(String *error = nullptr) const;
+    bool operator==(const Fossil &rhs) const
+    {
+        return std::tie(url, tag, branch, commit, projectName) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.commit, rhs.projectName);
     }
 };
 
@@ -85,9 +97,9 @@ struct RemoteFiles
     }
 };
 
-// add svn, p4, fossil, cvs, darcs
+// add svn, p4, cvs, darcs
 // do not add local files
-using Source = boost::variant<Git, Hg, Bzr, RemoteFile, RemoteFiles>;
+using Source = boost::variant<Git, Hg, Bzr, Fossil, RemoteFile, RemoteFiles>;
 
 struct DownloadSource
 {
@@ -96,6 +108,7 @@ struct DownloadSource
     void operator()(const Git &git);
     void operator()(const Hg &hg);
     void operator()(const Bzr &bzr);
+    void operator()(const Fossil &fossil);
     void operator()(const RemoteFile &rf);
     void operator()(const RemoteFiles &rfs);
 

@@ -379,6 +379,50 @@ void load_source_and_version(const yaml &root, Source &source, Version &version)
                 bzr.tag = version.toString();
         }
     }
+    else if (load_source(root, source) && source.which() == 0)
+    {
+        auto &fossil = boost::get<Fossil>(source);
+        if (ver.empty())
+        {
+            if (fossil.branch.empty() && fossil.tag.empty())
+            {
+                ver = "trunk";
+                version = Version(ver);
+            }
+            else if (!fossil.branch.empty())
+            {
+                ver = fossil.branch;
+                try
+                {
+                    // branch may contain bad symbols, so put in try...catch
+                    version = Version(ver);
+                }
+                catch (std::exception &)
+                {
+                }
+            }
+            else if (!fossil.tag.empty())
+            {
+                ver = fossil.tag;
+                try
+                {
+                    // tag may contain bad symbols, so put in try...catch
+                    version = Version(ver);
+                }
+                catch (std::exception &)
+                {
+                }
+            }
+        }
+
+        if (version.isValid() && fossil.branch.empty() && fossil.tag.empty() && fossil.commit.empty())
+        {
+            if (version.isBranch())
+                fossil.branch = version.toString();
+            else
+                fossil.tag = version.toString();
+        }
+    }
 }
 
 void BuildSystemConfigInsertions::load(const yaml &n)
