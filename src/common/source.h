@@ -67,13 +67,10 @@ struct Bzr
 
 struct Fossil : Git
 {
-    String projectName;
-
-    bool emptyName() const { return projectName.empty(); }
     bool isValid(String *error = nullptr) const;
     bool operator==(const Fossil &rhs) const
     {
-        return std::tie(url, tag, branch, commit, projectName) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.commit, rhs.projectName);
+        return std::tie(url, tag, branch, commit) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.commit);
     }
 };
 

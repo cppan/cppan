@@ -124,12 +124,6 @@ bool Fossil::isValid(String *error) const
             *error = "Fossil url is missing";
         return false;
     }
-    if (emptyName())
-    {
-        if (error)
-            *error = "Fossil project's name is missing";
-        return false;
-    }
 
     int e = 0;
     e += !tag.empty();
@@ -161,7 +155,7 @@ bool load_source(const yaml &root, Source &source)
 
     auto error = "Only one source must be specified";
 
-    const Strings nameRepo = { "git", "hg" , "bzr" , "fossil"};
+    const Strings nameRepo = { "git", "hg" , "bzr" , "fossil", "remote", "files"};
     String urlStr;
     for (auto i : nameRepo)
     {
@@ -209,11 +203,10 @@ bool load_source(const yaml &root, Source &source)
         YAML_EXTRACT_VAR(src, fossil.tag, "tag", String);
         YAML_EXTRACT_VAR(src, fossil.branch, "branch", String);
         YAML_EXTRACT_VAR(src, fossil.commit, "commit", String);
-        YAML_EXTRACT_VAR(src, fossil.projectName, "projectName", String);
         
         source = fossil;
     }
-    else if (src["remote"].IsDefined())
+    else if (urlStr == "remote")
     {
         RemoteFile rf;
         YAML_EXTRACT_VAR(src, rf.url, "remote", String);
@@ -223,7 +216,7 @@ bool load_source(const yaml &root, Source &source)
         else
             throw std::runtime_error(error);
     }
-    else if (src["files"].IsDefined())
+    else if (urlStr == "files")
     {
         RemoteFiles rfs;
         rfs.urls = get_sequence_set<String>(src, "files");
@@ -294,14 +287,14 @@ void save_source(yaml &root, const Source &source)
     boost::apply_visitor(save_source, source);
 }
 
-void run(const String &c)
+static void run(const String &c)
 {
     if (std::system(c.c_str()) != 0)
         throw std::runtime_error("Last command failed: " + c);
 }
 
 template <typename F>
-void downloadRepo(F &&f)
+static void downloadRepo(F &&f)
 {
     int n_tries = 3;
     while (n_tries--)
@@ -433,12 +426,12 @@ void DownloadSource::operator()(const Fossil &fossil)
 {
     downloadRepo([&fossil]()
     {
-        run("fossil clone " + fossil.url + " " + fossil.projectName + ".fossil");
+        run("fossil clone " + fossil.url + " " + "temp.fossil");
 
-        fs::create_directory(fossil.projectName);
-        ScopedCurrentPath scp(fs::current_path() / fossil.projectName);
+        fs::create_directory("temp");
+        ScopedCurrentPath scp(fs::current_path() / "temp");
 
-        run("fossil open ../" + fossil.projectName + ".fossil");
+        run("fossil open ../temp.fossil");
 
         if (!fossil.tag.empty())
             run("fossil update " + fossil.tag);
@@ -559,8 +552,7 @@ Source load_source(const ptree &p)
         fossil.tag = p.get("source.fossil.tag", "");
         fossil.branch = p.get("source.fossil.branch", "");
         fossil.commit = p.get("source.fossil.commit", "");
-        fossil.projectName = p.get("source.fossil.projectName", "");
-        if (!fossil.empty() && !fossil.emptyName())
+        if (!fossil.empty())
             return fossil;
     }
 
@@ -633,8 +625,6 @@ void save_source(ptree &p, const Source &source)
             p.add("source.fossil.branch", fossil.branch);
         if (!fossil.commit.empty())
             p.add("source.fossil.commit", fossil.commit);
-        if (!fossil.projectName.empty())
-            p.add("source.fossil.projectName", fossil.projectName);
     },
         [&p](const RemoteFile &rf)
     {
@@ -716,8 +706,6 @@ String print_source(const Source &source)
             r += "branch: " + fossil.branch + "\n";
         if (!fossil.commit.empty())
             r += "commit: " + fossil.commit + "\n";
-        if (!fossil.projectName.empty())
-            r += "projectName: " + fossil.projectName + "\n";
         return r;
     },
         [](const RemoteFile &rf)
