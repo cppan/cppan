@@ -379,6 +379,39 @@ void load_source_and_version(const yaml &root, Source &source, Version &version)
                 bzr.tag = version.toString();
         }
     }
+                version = Version(ver);
+            }
+            else if (!bzr.tag.empty())
+            {
+                ver = bzr.tag;
+                try
+                {
+                    // tag may contain bad symbols, so put in try...catch
+                    version = Version(ver);
+                }
+                catch (std::exception &)
+                {
+                }
+            }
+            else if (bzr.revision != -1)
+            {
+                ver = "revision: " + std::to_string(bzr.revision);
+                try
+                {
+                    // tag may contain bad symbols, so put in try...catch
+                    version = Version(ver);
+                }
+                catch (std::exception &)
+                {
+                }
+            }
+        }
+
+        if (version.isValid() && bzr.tag.empty() && bzr.revision == -1)
+        {
+                bzr.tag = version.toString();
+        }
+    }
     else if (load_source(root, source) && source.which() == 0)
     {
         auto &fossil = boost::get<Fossil>(source);
@@ -1270,6 +1303,8 @@ void Project::load(const yaml &root)
             // second part - on installed package
             if (fs::exists(root_directory / "include") || fs::exists("include"))
                 include_directories.public_.insert("include");
+            else if (fs::exists(root_directory / "includes") || fs::exists("includes"))
+                include_directories.public_.insert("includes");
             else
             {
                 include_directories.public_.insert(".");
@@ -1296,6 +1331,8 @@ void Project::load(const yaml &root)
                 if (fs::exists(root_directory / current) || fs::exists(current))
                 {
                     if (fs::exists(root_directory / "include") || fs::exists("include"))
+                        include_directories.private_.insert(current);
+                    else if (fs::exists(root_directory / "includes") || fs::exists("includes"))
                         include_directories.private_.insert(current);
                     else
                     {
@@ -1329,6 +1366,8 @@ void Project::load(const yaml &root)
         // so do not insert like 'insert(root_directory / "dir/.*");'
         if (fs::exists(root_directory / "include"))
             sources.insert("include/.*");
+        else if (fs::exists(root_directory / "includes"))
+            sources.insert("includes/.*");
         for (auto &d : source_dir_names)
         {
             if (fs::exists(root_directory / d))

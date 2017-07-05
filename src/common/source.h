@@ -108,6 +108,7 @@ struct DownloadSource
     void operator()(const Git &git);
     void operator()(const Hg &hg);
     void operator()(const Bzr &bzr);
+    void operator()(const Bzr &bzr);
     void operator()(const Fossil &fossil);
     void operator()(const RemoteFile &rf);
     void operator()(const RemoteFiles &rfs);
