@@ -153,7 +153,6 @@ bool Fossil::isValid(String *error) const
     return true;
 }
 
-
 bool load_source(const yaml &root, Source &source)
 {
     auto &src = root["source"];
@@ -162,19 +161,18 @@ bool load_source(const yaml &root, Source &source)
 
     auto error = "Only one source must be specified";
 
-    Strings nameRepo = { "git", "hg" , "bzr" , "fossil"};
-    String urlStr = "";
-    int iRepo;
-    for (size_t i = 0; i < nameRepo.size(); i++)
+    const Strings nameRepo = { "git", "hg" , "bzr" , "fossil"};
+    String urlStr;
+    for (auto i : nameRepo)
     {
-        YAML_EXTRACT_VAR(src, urlStr, nameRepo[i], String);
+        YAML_EXTRACT_VAR(src, urlStr, i, String);
         if (urlStr != "")
         {
-            iRepo = i;
+            urlStr = i;
             break;
         }
     }
-    if (nameRepo[iRepo] == "git")
+    if (urlStr == "git")
     {
         Git git;
         YAML_EXTRACT_VAR(src, git.url, "git", String);
@@ -182,32 +180,9 @@ bool load_source(const yaml &root, Source &source)
         YAML_EXTRACT_VAR(src, git.branch, "branch", String);
         YAML_EXTRACT_VAR(src, git.commit, "commit", String);
 
-        if (!git.url.empty())
-        {
-            if (src["file"].IsDefined())
-                throw std::runtime_error(error);
-            source = git;
-        }
-        else if (src["remote"].IsDefined())
-        {
-            RemoteFile rf;
-            YAML_EXTRACT_VAR(src, rf.url, "remote", String);
-
-            if (!rf.url.empty())
-                source = rf;
-            else
-                throw std::runtime_error(error);
-        }
-        else if (src["files"].IsDefined())
-        {
-            RemoteFiles rfs;
-            rfs.urls = get_sequence_set<String>(src, "files");
-            if (rfs.urls.empty())
-                throw std::runtime_error("Empty remote files");
-            source = rfs;
-        }
+        source = git;
     }
-    else if (nameRepo[iRepo] == "hg")
+    else if (urlStr == "hg")
     {
         Hg hg;
         YAML_EXTRACT_VAR(src, hg.url, "hg", String);
@@ -215,67 +190,19 @@ bool load_source(const yaml &root, Source &source)
         YAML_EXTRACT_VAR(src, hg.branch, "branch", String);
         YAML_EXTRACT_VAR(src, hg.commit, "commit", String);
         YAML_EXTRACT_VAR(src, hg.revision, "revision", int64_t);
-        //
 
-        if (!hg.url.empty())
-        {
-            if (src["file"].IsDefined())
-                throw std::runtime_error(error);
-            source = hg;
-        }
-        else if (src["remote"].IsDefined())
-        {
-            RemoteFile rf;
-            YAML_EXTRACT_VAR(src, rf.url, "remote", String);
-
-            if (!rf.url.empty())
-                source = rf;
-            else
-                throw std::runtime_error(error);
-        }
-        else if (src["files"].IsDefined())
-        {
-            RemoteFiles rfs;
-            rfs.urls = get_sequence_set<String>(src, "files");
-            if (rfs.urls.empty())
-                throw std::runtime_error("Empty remote files");
-            source = rfs;
-        }
+        source = hg;
     }
-    else if (nameRepo[iRepo] == "bzr")
+    else if (urlStr == "bzr")
     {
         Bzr bzr;
         YAML_EXTRACT_VAR(src, bzr.url, "bzr", String);
         YAML_EXTRACT_VAR(src, bzr.tag, "tag", String);
         YAML_EXTRACT_VAR(src, bzr.revision, "revision", int64_t);
-        //
 
-        if (!bzr.url.empty())
-        {
-            if (src["file"].IsDefined())
-                throw std::runtime_error(error);
-            source = bzr;
-        }
-        else if (src["remote"].IsDefined())
-        {
-            RemoteFile rf;
-            YAML_EXTRACT_VAR(src, rf.url, "remote", String);
-
-            if (!rf.url.empty())
-                source = rf;
-            else
-                throw std::runtime_error(error);
-        }
-        else if (src["files"].IsDefined())
-        {
-            RemoteFiles rfs;
-            rfs.urls = get_sequence_set<String>(src, "files");
-            if (rfs.urls.empty())
-                throw std::runtime_error("Empty remote files");
-            source = rfs;
-        }
+        source = bzr;
     }
-    else if (nameRepo[iRepo] == "fossil")
+    else if (urlStr == "fossil")
     {
         Fossil fossil;
         YAML_EXTRACT_VAR(src, fossil.url, "fossil", String);
@@ -283,36 +210,33 @@ bool load_source(const yaml &root, Source &source)
         YAML_EXTRACT_VAR(src, fossil.branch, "branch", String);
         YAML_EXTRACT_VAR(src, fossil.commit, "commit", String);
         YAML_EXTRACT_VAR(src, fossil.projectName, "projectName", String);
-        //
-
-        if (!fossil.url.empty() && !fossil.projectName.empty())
-        {
-            if (src["file"].IsDefined())
-                throw std::runtime_error(error);
-            source = fossil;
-        }
-        else if (src["remote"].IsDefined())
-        {
-            RemoteFile rf;
-            YAML_EXTRACT_VAR(src, rf.url, "remote", String);
-
-            if (!rf.url.empty())
-                source = rf;
-            else
-                throw std::runtime_error(error);
-        }
-        else if (src["files"].IsDefined())
-        {
-            RemoteFiles rfs;
-            rfs.urls = get_sequence_set<String>(src, "files");
-            if (rfs.urls.empty())
-                throw std::runtime_error("Empty remote files");
-            source = rfs;
-        }
+        
+        source = fossil;
     }
+    else if (src["remote"].IsDefined())
+    {
+        RemoteFile rf;
+        YAML_EXTRACT_VAR(src, rf.url, "remote", String);
+
+        if (!rf.url.empty())
+            source = rf;
+        else
+            throw std::runtime_error(error);
+    }
+    else if (src["files"].IsDefined())
+    {
+        RemoteFiles rfs;
+        rfs.urls = get_sequence_set<String>(src, "files");
+        if (rfs.urls.empty())
+            throw std::runtime_error("Empty remote files");
+        source = rfs;
+    }
+    else
+        throw std::runtime_error("Empty source");
 
     return true;
 }
+
 void save_source(yaml &root, const Source &source)
 {
     auto save_source = overload(
@@ -369,20 +293,22 @@ void save_source(yaml &root, const Source &source)
 
     boost::apply_visitor(save_source, source);
 }
+
 void run(const String &c)
 {
     if (std::system(c.c_str()) != 0)
         throw std::runtime_error("Last command failed: " + c);
 }
-template < typename T >
-void downloadRepo(T &&t)
+
+template <typename F>
+void downloadRepo(F &&f)
 {
     int n_tries = 3;
     while (n_tries--)
     {
         try
         {
-            t();
+            f();
             break;
         }
         catch (...)
@@ -392,6 +318,7 @@ void downloadRepo(T &&t)
         }
     }
 }
+
 void DownloadSource::operator()(const Git &git)
 {
     // try to speed up git downloads from github

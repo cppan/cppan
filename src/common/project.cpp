@@ -379,40 +379,7 @@ void load_source_and_version(const yaml &root, Source &source, Version &version)
                 bzr.tag = version.toString();
         }
     }
-                version = Version(ver);
-            }
-            else if (!bzr.tag.empty())
-            {
-                ver = bzr.tag;
-                try
-                {
-                    // tag may contain bad symbols, so put in try...catch
-                    version = Version(ver);
-                }
-                catch (std::exception &)
-                {
-                }
-            }
-            else if (bzr.revision != -1)
-            {
-                ver = "revision: " + std::to_string(bzr.revision);
-                try
-                {
-                    // tag may contain bad symbols, so put in try...catch
-                    version = Version(ver);
-                }
-                catch (std::exception &)
-                {
-                }
-            }
-        }
-
-        if (version.isValid() && bzr.tag.empty() && bzr.revision == -1)
-        {
-                bzr.tag = version.toString();
-        }
-    }
-    else if (load_source(root, source) && source.which() == 0)
+    else if (load_source(root, source) && source.which() == 3)
     {
         auto &fossil = boost::get<Fossil>(source);
         if (ver.empty())
