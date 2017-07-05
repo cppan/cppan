@@ -345,7 +345,7 @@ void load_source_and_version(const yaml &root, Source &source, Version &version)
         {
             if (bzr.tag.empty() && bzr.revision == -1)
             {
-                ver = "default";
+                ver = "trunk";
                 version = Version(ver);
             }
             else if (!bzr.tag.empty())

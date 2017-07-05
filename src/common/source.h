@@ -117,7 +117,6 @@ struct DownloadSource
 private:
     void download_file(const String &url, const path &fn);
     void download_and_unpack(const String &url, const path &fn);
-    void run(const String &c);
 };
 
 bool load_source(const yaml &root, Source &source);
@@ -129,3 +128,5 @@ void save_source(ptree &p, const Source &source);
 String print_source(const Source &source);
 
 bool isValidSourceUrl(const Source &source);
+
+void run(const String &c);
