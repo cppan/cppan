@@ -496,7 +496,109 @@ void Fossil::save(yaml &root, const String &name) const
 {
     Git::save(root, name);
 }
+//-----------------------------------------------------------------------------------
+Cvs::Cvs(const yaml &root, const String &name)
+    : SourceUrl(root, name)
+{
+    YAML_EXTRACT_AUTO(tag);
+    YAML_EXTRACT_AUTO(branch);
+    YAML_EXTRACT_AUTO(revision);
+    YAML_EXTRACT_AUTO(moduleName);
+}
 
+void Cvs::download() const
+{
+    downloadRepository([this]()
+    {
+        run("cvs " + url + " co " + moduleName);
+
+        ScopedCurrentPath scp(fs::current_path() / moduleName);
+
+        if (!tag.empty())
+            run("cvs update -r " + tag);
+        else if (!branch.empty())
+            run("cvs update -r " + branch);
+        else if (!revision.empty())
+            run("cvs update -r " + revision);
+    });
+}
+
+bool Cvs::isValid(String *error) const
+{
+    if (!SourceUrl::isValid(getString(), error))
+        return false;
+
+    int e = 0;
+    e += !tag.empty();
+    e += !branch.empty();
+    e += !revision.empty();
+
+    if (e == 0)
+    {
+        if (error)
+            *error = "No cvs sources (tag or branch or revision) available";
+        return false;
+    }
+
+    if (e > 1)
+    {
+        if (error)
+            *error = "Only one Cvs source (tag or branch or revision) must be specified";
+        return false;
+    }
+    if (moduleName.empty())
+    {
+        if (error)
+            *error = "Module name must be specified";
+        return false;
+    }
+
+    return true;
+}
+
+bool Cvs::load(const ptree &p)
+{
+    if (!SourceUrl::load(p))
+        return false;
+    PTREE_GET_STRING(tag);
+    PTREE_GET_STRING(branch);
+    PTREE_GET_STRING(revision);
+    PTREE_GET_STRING(moduleName);
+    return true;
+}
+
+bool Cvs::save(ptree &p) const
+{
+    if (!SourceUrl::save(p))
+        return false;
+    PTREE_ADD_NOT_EMPTY(tag);
+    PTREE_ADD_NOT_EMPTY(branch);
+    PTREE_ADD_NOT_EMPTY(revision);
+    PTREE_ADD_NOT_EMPTY(moduleName);
+    return true;
+}
+
+void Cvs::save(yaml &root, const String &name) const
+{
+    SourceUrl::save(root, name);
+    YAML_SET_NOT_EMPTY(tag);
+    YAML_SET_NOT_EMPTY(branch);
+    YAML_SET_NOT_EMPTY(revision);
+    YAML_SET_NOT_EMPTY(moduleName);
+}
+
+String Cvs::print() const
+{
+    auto r = SourceUrl::print();
+    if (r.empty())
+        return r;
+    STRING_PRINT_NOT_EMPTY(tag);
+    STRING_PRINT_NOT_EMPTY(branch);
+    STRING_PRINT_NOT_EMPTY(revision);
+    STRING_PRINT_NOT_EMPTY(moduleName);
+    return r;
+}
+//---------------------------------------------------------------------
 RemoteFile::RemoteFile(const yaml &root, const String &name)
     : SourceUrl(root, name)
 {

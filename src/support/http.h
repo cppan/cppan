@@ -17,6 +17,8 @@
 #pragma once
 
 #include <primitives/http.h>
+#include <regex>
 
 bool isValidSourceUrl(const String &url);
 void checkSourceUrl(const String &url);
+bool checkCvsUrl(const String &url);

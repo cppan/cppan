@@ -130,6 +130,31 @@ struct Fossil : Git
     static String getString() { return "fossil"; }
 };
 
+struct Cvs : SourceUrl
+{
+    String tag;
+    String branch;
+    String revision;
+    String moduleName;
+
+    Cvs() = default;
+    Cvs(const yaml &root, const String &name = Cvs::getString());
+
+    void download() const;
+    bool isValid(String *error = nullptr) const;
+    bool load(const ptree &p);
+    bool save(ptree &p) const;
+    void save(yaml &root, const String &name = Cvs::getString()) const;
+    String print() const;
+
+    bool operator==(const Cvs &rhs) const
+    {
+        return std::tie(url, tag, branch, revision, moduleName) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.revision, rhs.moduleName);
+    }
+
+    static String getString() { return "cvs"; }
+};
+
 struct RemoteFile : SourceUrl
 {
     RemoteFile() = default;
@@ -177,6 +202,7 @@ struct RemoteFiles
     f(Hg) d \
     f(Bzr) d \
     f(Fossil) d \
+    f(Cvs) d \
     f(RemoteFile) d \
     f(RemoteFiles)
 

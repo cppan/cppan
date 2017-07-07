@@ -423,6 +423,62 @@ void load_source_and_version(const yaml &root, Source &source, Version &version)
                 fossil.tag = version.toString();
         }
     }
+    else if (load_source(root, source) && source.which() == 4)
+    {
+        auto &cvs = boost::get<Cvs>(source);
+        if (ver.empty())
+        {
+            if (cvs.branch.empty() && cvs.tag.empty() && cvs.revision.empty())
+            {
+                ver = "trunk";
+                version = Version(ver);
+            }
+            else if (!cvs.branch.empty())
+            {
+                ver = cvs.branch;
+                try
+                {
+                    // branch may contain bad symbols, so put in try...catch
+                    version = Version(ver);
+                }
+                catch (std::exception &)
+                {
+                }
+            }
+            else if (!cvs.tag.empty())
+            {
+                ver = cvs.tag;
+                try
+                {
+                    // tag may contain bad symbols, so put in try...catch
+                    version = Version(ver);
+                }
+                catch (std::exception &)
+                {
+                }
+            }
+            else if (!cvs.revision.empty())
+            {
+                ver = cvs.revision;
+                try
+                {
+                    // tag may contain bad symbols, so put in try...catch
+                    version = Version(ver);
+                }
+                catch (std::exception &)
+                {
+                }
+            }
+        }
+
+        if (version.isValid() && cvs.branch.empty() && cvs.tag.empty() && cvs.revision.empty())
+        {
+            if (version.isBranch())
+                cvs.branch = version.toString();
+            else
+                cvs.tag = version.toString();
+        }
+    }
 }
 
 void BuildSystemConfigInsertions::load(const yaml &n)
