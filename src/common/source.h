@@ -21,6 +21,7 @@
 #include "property_tree.h"
 
 #include <boost/variant.hpp>
+#include <regex>
 
 #include <set>
 
@@ -135,13 +136,14 @@ struct Cvs : SourceUrl
     String tag;
     String branch;
     String revision;
-    String moduleName;
+    String module;
 
     Cvs() = default;
     Cvs(const yaml &root, const String &name = Cvs::getString());
 
     void download() const;
     bool isValid(String *error = nullptr) const;
+    bool isValidUrl() const;
     bool load(const ptree &p);
     bool save(ptree &p) const;
     void save(yaml &root, const String &name = Cvs::getString()) const;
@@ -149,7 +151,7 @@ struct Cvs : SourceUrl
 
     bool operator==(const Cvs &rhs) const
     {
-        return std::tie(url, tag, branch, revision, moduleName) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.revision, rhs.moduleName);
+        return std::tie(url, tag, branch, revision, module) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.revision, rhs.module);
     }
 
     static String getString() { return "cvs"; }

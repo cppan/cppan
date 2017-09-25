@@ -18,8 +18,6 @@
 
 bool isValidSourceUrl(const String &url)
 {
-    if (checkCvsUrl(url))
-        return true;
     if (url.empty())
         return false;
     if (!isUrl(url))
@@ -47,12 +45,4 @@ void checkSourceUrl(const String &url)
 {
     if (!isValidSourceUrl(url))
         throw std::runtime_error("Bad source url: " + url);
-}
-
-bool checkCvsUrl(const String &url)
-{
-    const std::regex checkCvs("-d:[a-z0-9]+:[a-z0-9]+@.*");
-    if (std::regex_match(url, checkCvs))
-        return true;
-    return false;
 }

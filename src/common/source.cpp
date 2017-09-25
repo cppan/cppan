@@ -95,6 +95,16 @@ bool SourceUrl::isValidUrl() const
     return isValidSourceUrl(url);
 }
 
+bool Cvs::isValidUrl() const
+{
+    const std::regex checkCvs("-d:([a-z0-9_-]+):([a-z0-9_-]+)@(\S*):(\S*)");
+    bool qwe = std::regex_match(url, checkCvs);
+    int qwq = std::regex_match(url, checkCvs);
+    if (std::regex_match(url, checkCvs))
+        return true;
+    return false;
+}
+
 bool SourceUrl::load(const ptree &p)
 {
     PTREE_GET_STRING(url);
@@ -503,16 +513,16 @@ Cvs::Cvs(const yaml &root, const String &name)
     YAML_EXTRACT_AUTO(tag);
     YAML_EXTRACT_AUTO(branch);
     YAML_EXTRACT_AUTO(revision);
-    YAML_EXTRACT_AUTO(moduleName);
+    YAML_EXTRACT_AUTO(module);
 }
 
 void Cvs::download() const
 {
     downloadRepository([this]()
     {
-        run("cvs " + url + " co " + moduleName);
+        run("cvs " + url + " co " + module);
 
-        ScopedCurrentPath scp(fs::current_path() / moduleName);
+        ScopedCurrentPath scp(fs::current_path() / module);
 
         if (!tag.empty())
             run("cvs update -r " + tag);
@@ -546,7 +556,7 @@ bool Cvs::isValid(String *error) const
             *error = "Only one Cvs source (tag or branch or revision) must be specified";
         return false;
     }
-    if (moduleName.empty())
+    if (module.empty())
     {
         if (error)
             *error = "Module name must be specified";
@@ -563,7 +573,7 @@ bool Cvs::load(const ptree &p)
     PTREE_GET_STRING(tag);
     PTREE_GET_STRING(branch);
     PTREE_GET_STRING(revision);
-    PTREE_GET_STRING(moduleName);
+    PTREE_GET_STRING(module);
     return true;
 }
 
@@ -574,7 +584,7 @@ bool Cvs::save(ptree &p) const
     PTREE_ADD_NOT_EMPTY(tag);
     PTREE_ADD_NOT_EMPTY(branch);
     PTREE_ADD_NOT_EMPTY(revision);
-    PTREE_ADD_NOT_EMPTY(moduleName);
+    PTREE_ADD_NOT_EMPTY(module);
     return true;
 }
 
@@ -584,7 +594,7 @@ void Cvs::save(yaml &root, const String &name) const
     YAML_SET_NOT_EMPTY(tag);
     YAML_SET_NOT_EMPTY(branch);
     YAML_SET_NOT_EMPTY(revision);
-    YAML_SET_NOT_EMPTY(moduleName);
+    YAML_SET_NOT_EMPTY(module);
 }
 
 String Cvs::print() const
@@ -595,7 +605,7 @@ String Cvs::print() const
     STRING_PRINT_NOT_EMPTY(tag);
     STRING_PRINT_NOT_EMPTY(branch);
     STRING_PRINT_NOT_EMPTY(revision);
-    STRING_PRINT_NOT_EMPTY(moduleName);
+    STRING_PRINT_NOT_EMPTY(module);
     return r;
 }
 //---------------------------------------------------------------------
