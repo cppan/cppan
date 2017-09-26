@@ -97,9 +97,7 @@ bool SourceUrl::isValidUrl() const
 
 bool Cvs::isValidUrl() const
 {
-    const std::regex checkCvs("-d:([a-z0-9_-]+):([a-z0-9_-]+)@(\S*):(\S*)");
-    bool qwe = std::regex_match(url, checkCvs);
-    int qwq = std::regex_match(url, checkCvs);
+    const std::regex checkCvs("-d:([a-z0-9_-]+):([a-z0-9_-]+)@(\\S*):(\\S*)");
     if (std::regex_match(url, checkCvs))
         return true;
     return false;
@@ -523,7 +521,6 @@ void Cvs::download() const
         run("cvs " + url + " co " + module);
 
         ScopedCurrentPath scp(fs::current_path() / module);
-
         if (!tag.empty())
             run("cvs update -r " + tag);
         else if (!branch.empty())
