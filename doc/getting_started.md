@@ -25,7 +25,7 @@ After this you should include `.cppan` subdirectory in your `CMakeLists.txt` fil
 
     add_subdirectory(.cppan)
 
-You can do this after `project()` directive. In this case all dependencies won't be re-built after any compile flags. If you need your special compile flags to have influence on deps, write `add_subdirectory(cppan)` after compiler setup.
+You can do this after `project()` directive. In this case all dependencies won't be re-built after any compile flags. If you need your special compile flags to have influence on deps, write `add_subdirectory(.cppan)` after compiler setup.
 
 For your target(s) add `cppan` to `target_link_libraries()`:
 
