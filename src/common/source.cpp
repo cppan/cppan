@@ -19,6 +19,8 @@
 #include "http.h"
 #include "yaml.h"
 
+#include <fmt/format.h>
+#include <primitives/command.h>
 #include <primitives/overloads.h>
 #include <primitives/pack.h>
 
@@ -37,6 +39,20 @@
 #define YAML_SET(x, n) root[n] = x
 #define YAML_SET_NOT_EMPTY(x) if (!x.empty()) YAML_SET(x, #x)
 #define YAML_SET_NOT_MINUS_ONE(x) if (x != -1) YAML_SET(x, #x)
+
+using primitives::Command;
+
+void applyVersion(String &s, const Version &v)
+{
+    s = fmt::format(s,
+        fmt::arg("M", (int)v.major),
+        fmt::arg("m", (int)v.minor),
+        fmt::arg("p", (int)v.patch),
+        // "t" - tweak?
+        fmt::arg("b", v.branch),
+        fmt::arg("v", v.toString())
+    );
+}
 
 static void download_file_checked(const String &url, const path &fn, int64_t max_file_size = 0)
 {
@@ -70,15 +86,53 @@ static void downloadRepository(F &&f)
     }
 }
 
-static void run(const String &c)
+static int isEmpty(int64_t i)
 {
-    if (std::system(c.c_str()) != 0)
-        throw std::runtime_error("Last command failed: " + c);
+    return i == -1;
+}
+
+static int isEmpty(const String &s)
+{
+    return s.empty();
+}
+
+static int checkEmpty()
+{
+    return 0;
+}
+
+template <typename First, typename ... Args>
+static int checkEmpty(First &&f, Args && ... args)
+{
+    return isEmpty(f) + checkEmpty(std::forward<Args>(args)...);
+}
+
+template <typename ... Args>
+static String checkOne(const String &name, Args && ... args)
+{
+    int n = checkEmpty(std::forward<Args>(args)...);
+    if (n == 0)
+        return "No " + name + " sources available";
+    if (n > 1)
+        return "Only one " + name + " source must be specified";
+    return "";
 }
 
 SourceUrl::SourceUrl(const yaml &root, const String &name)
 {
     YAML_EXTRACT_VAR(root, url, name, String);
+}
+
+template <typename ... Args>
+bool SourceUrl::checkValid(const String &name, String *error, Args && ... args) const
+{
+    if (!isValid(name, error))
+        return false;
+    auto e = checkOne(name, std::forward<Args>(args)...);
+    auto ret = e.empty();
+    if (!ret && error)
+        *error = e;
+    return ret;
 }
 
 bool SourceUrl::isValid(const String &name, String *error) const
@@ -129,6 +183,11 @@ String SourceUrl::print() const
         return r;
     STRING_PRINT(url);
     return r;
+}
+
+void SourceUrl::applyVersion(const Version &v)
+{
+    ::applyVersion(url, v);
 }
 
 Git::Git(const yaml &root, const String &name)
@@ -191,53 +250,31 @@ void Git::download() const
     {
         String branchPath = url.substr(url.find_last_of("/") + 1);
         fs::create_directory(branchPath);
-        ScopedCurrentPath scp(fs::current_path() / branchPath);
+        ScopedCurrentPath scp(current_thread_path() / branchPath);
 
-        run("git init");
-        run("git remote add origin " + url);
+        Command::execute({ "git", "init" });
+        Command::execute({ "git", "remote", "add", "origin", url });
         if (!tag.empty())
         {
-            run("git fetch --depth 1 origin refs/tags/" + tag);
-            run("git reset --hard FETCH_HEAD");
+            Command::execute({ "git", "fetch", "--depth", "1", "origin", "refs/tags/" + tag });
+            Command::execute({ "git", "reset", "--hard", "FETCH_HEAD" });
         }
         else if (!branch.empty())
         {
-            run("git fetch --depth 1 origin " + branch);
-            run("git reset --hard FETCH_HEAD");
+            Command::execute({ "git", "fetch", "--depth", "1", "origin", branch });
+            Command::execute({ "git", "reset", "--hard", "FETCH_HEAD" });
         }
         else if (!commit.empty())
         {
-            run("git fetch");
-            run("git checkout " + commit);
+            Command::execute({ "git", "fetch" });
+            Command::execute({ "git", "checkout", commit });
         }
     });
 }
 
 bool Git::isValid(String *error) const
 {
-    if (!SourceUrl::isValid(getString(), error))
-        return false;
-
-    int e = 0;
-    e += !tag.empty();
-    e += !branch.empty();
-    e += !commit.empty();
-
-    if (e == 0)
-    {
-        if (error)
-            *error = "No git sources (tag or branch or commit) available";
-        return false;
-    }
-
-    if (e > 1)
-    {
-        if (error)
-            *error = "Only one git source (tag or branch or commit) must be specified";
-        return false;
-    }
-
-    return true;
+    return checkValid(getString(), error, tag, branch, commit);
 }
 
 bool Git::load(const ptree &p)
@@ -279,6 +316,28 @@ String Git::print() const
     return r;
 }
 
+String Git::printCpp() const
+{
+    String s;
+    s += "Git(\"" + url;
+    s += "\", \"" + tag;
+    if (tag.empty())
+    {
+        s += "\", \"" + branch;
+        if (branch.empty())
+            s += "\", \"" + commit;
+    }
+    s += "\")";
+    return s;
+}
+
+void Git::applyVersion(const Version &v)
+{
+    SourceUrl::applyVersion(v);
+    ::applyVersion(tag, v);
+    ::applyVersion(branch, v);
+}
+
 Hg::Hg(const yaml &root, const String &name)
     : Git(root, name)
 {
@@ -289,48 +348,25 @@ void Hg::download() const
 {
     downloadRepository([this]()
     {
-        run("hg clone " + url);
+        Command::execute({ "hg", "clone", url });
 
         String branchPath = url.substr(url.find_last_of("/") + 1);
-        ScopedCurrentPath scp(fs::current_path() / branchPath);
+        ScopedCurrentPath scp(current_thread_path() / branchPath);
 
         if (!tag.empty())
-            run("hg update " + tag);
+            Command::execute({ "hg", "update", tag });
         else if (!branch.empty())
-            run("hg update " + branch);
+            Command::execute({ "hg", "update", branch });
         else if (!commit.empty())
-            run("hg update " + commit);
+            Command::execute({ "hg", "update", commit });
         else if (revision != -1)
-            run("hg update " + std::to_string(revision));
+            Command::execute({ "hg", "update", std::to_string(revision) });
     });
 }
 
 bool Hg::isValid(String *error) const
 {
-    if (!SourceUrl::isValid(getString(), error))
-        return false;
-
-    int e = 0;
-    e += !tag.empty();
-    e += !branch.empty();
-    e += !commit.empty();
-    e += revision != -1;
-
-    if (e == 0)
-    {
-        if (error)
-            *error = "No hg sources (tag or branch or commit or revision) available";
-        return false;
-    }
-
-    if (e > 1)
-    {
-        if (error)
-            *error = "Only one hg source (tag or branch or commit or revision) must be specified";
-        return false;
-    }
-
-    return true;
+    return checkValid(getString(), error, tag, branch, commit, revision);
 }
 
 bool Hg::load(const ptree &p)
@@ -364,6 +400,11 @@ String Hg::print() const
     return r;
 }
 
+String Hg::printCpp() const
+{
+    return String();
+}
+
 Bzr::Bzr(const yaml &root, const String &name)
     : SourceUrl(root, name)
 {
@@ -375,42 +416,21 @@ void Bzr::download() const
 {
     downloadRepository([this]()
     {
-        run("bzr branch " + url);
+        Command::execute({ "bzr", "branch", url });
 
         String branchPath = url.substr(url.find_last_of("/") + 1);
-        ScopedCurrentPath scp(fs::current_path() / branchPath);
+        ScopedCurrentPath scp(current_thread_path() / branchPath);
 
         if (!tag.empty())
-            run("bzr update -r tag:" + tag);
+            Command::execute({ "bzr", "update", "-r", "tag:" + tag });
         else if (revision != -1)
-            run("bzr update -r " + std::to_string(revision));
+            Command::execute({ "bzr", "update", "-r", std::to_string(revision) });
     });
 }
 
 bool Bzr::isValid(String *error) const
 {
-    if (!SourceUrl::isValid(getString(), error))
-        return false;
-
-    int e = 0;
-    e += !tag.empty();
-    e += revision != -1;
-
-    if (e == 0)
-    {
-        if (error)
-            *error = "No bzr sources (tag or revision) available";
-        return false;
-    }
-
-    if (e > 1)
-    {
-        if (error)
-            *error = "Only one Bzr source (tag or revision) must be specified";
-        return false;
-    }
-
-    return true;
+    return checkValid(getString(), error, tag, revision);
 }
 
 bool Bzr::load(const ptree &p)
@@ -448,6 +468,11 @@ String Bzr::print() const
     return r;
 }
 
+String Bzr::printCpp() const
+{
+    return String();
+}
+
 Fossil::Fossil(const yaml &root, const String &name)
     : Git(root, name)
 {
@@ -457,47 +482,20 @@ void Fossil::download() const
 {
     downloadRepository([this]()
     {
-        run("fossil clone " + url + " " + "temp.fossil");
+        Command::execute({ "fossil", "clone", url, "temp.fossil" });
 
         fs::create_directory("temp");
-        ScopedCurrentPath scp(fs::current_path() / "temp");
+        ScopedCurrentPath scp(current_thread_path() / "temp");
 
-        run("fossil open ../temp.fossil");
+        Command::execute({ "fossil", "open", "../temp.fossil" });
 
         if (!tag.empty())
-            run("fossil update " + tag);
+            Command::execute({ "fossil", "update", tag });
         else if (!branch.empty())
-            run("fossil update " + branch);
+            Command::execute({ "fossil", "update", branch });
         else if (!commit.empty())
-            run("fossil update " + commit);
+            Command::execute({ "fossil", "update", commit });
     });
-}
-
-bool Fossil::isValid(String *error) const
-{
-    if (!SourceUrl::isValid(getString(), error))
-        return false;
-
-    int e = 0;
-    e += !tag.empty();
-    e += !branch.empty();
-    e += !commit.empty();
-
-    if (e == 0)
-    {
-        if (error)
-            *error = "No fossil sources (tag or branch or commit) available";
-        return false;
-    }
-
-    if (e > 1)
-    {
-        if (error)
-            *error = "Only one fossil source (tag or branch or commit) must be specified";
-        return false;
-    }
-
-    return true;
 }
 
 void Fossil::save(yaml &root, const String &name) const
@@ -518,49 +516,22 @@ void Cvs::download() const
 {
     downloadRepository([this]()
     {
-        run("cvs " + url + " co " + module);
+		Command::execute({ "cvs", url, "co", module });
 
-        ScopedCurrentPath scp(fs::current_path() / module);
-        if (!tag.empty())
-            run("cvs update -r " + tag);
-        else if (!branch.empty())
-            run("cvs update -r " + branch);
-        else if (!revision.empty())
-            run("cvs update -r " + revision);
+        ScopedCurrentPath scp(current_thread_path() / module);
+
+		if (!tag.empty())
+			Command::execute({ "cvs", "update", "-r", tag });
+		else if (!branch.empty())
+            Command::execute({ "cvs", "update", "-r", branch });
+		else if (!revision.empty())
+            Command::execute({ "cvs", "update", "-r", revision });
     });
 }
 
 bool Cvs::isValid(String *error) const
 {
-    if (!SourceUrl::isValid(getString(), error))
-        return false;
-
-    int e = 0;
-    e += !tag.empty();
-    e += !branch.empty();
-    e += !revision.empty();
-
-    if (e == 0)
-    {
-        if (error)
-            *error = "No cvs sources (tag or branch or revision) available";
-        return false;
-    }
-
-    if (e > 1)
-    {
-        if (error)
-            *error = "Only one Cvs source (tag or branch or revision) must be specified";
-        return false;
-    }
-    if (module.empty())
-    {
-        if (error)
-            *error = "Module name must be specified";
-        return false;
-    }
-
-    return true;
+    return checkValid(getString(), error, tag, branch, revision);
 }
 
 bool Cvs::load(const ptree &p)
@@ -581,7 +552,6 @@ bool Cvs::save(ptree &p) const
     PTREE_ADD_NOT_EMPTY(tag);
     PTREE_ADD_NOT_EMPTY(branch);
     PTREE_ADD_NOT_EMPTY(revision);
-    PTREE_ADD_NOT_EMPTY(module);
     return true;
 }
 
@@ -591,7 +561,6 @@ void Cvs::save(yaml &root, const String &name) const
     YAML_SET_NOT_EMPTY(tag);
     YAML_SET_NOT_EMPTY(branch);
     YAML_SET_NOT_EMPTY(revision);
-    YAML_SET_NOT_EMPTY(module);
 }
 
 String Cvs::print() const
@@ -605,7 +574,12 @@ String Cvs::print() const
     STRING_PRINT_NOT_EMPTY(module);
     return r;
 }
-//---------------------------------------------------------------------
+
+String Cvs::printCpp() const
+{
+    return String();
+}
+
 RemoteFile::RemoteFile(const yaml &root, const String &name)
     : SourceUrl(root, name)
 {
@@ -621,6 +595,19 @@ void RemoteFile::download() const
 void RemoteFile::save(yaml &root, const String &name) const
 {
     SourceUrl::save(root, name);
+}
+
+String RemoteFile::printCpp() const
+{
+    String s;
+    s += "RemoteFile(\"" + url;
+    s += "\")";
+    return s;
+}
+
+void RemoteFile::applyVersion(const Version &v)
+{
+    ::applyVersion(url, v);
 }
 
 RemoteFiles::RemoteFiles(const yaml &root, const String &name)
@@ -678,14 +665,37 @@ String RemoteFiles::print() const
     return r;
 }
 
+String RemoteFiles::printCpp() const
+{
+    String s;
+    s += "RemoteFiles(";
+    for (auto &rf : urls)
+        s += "\"" + rf + "\", ";
+    s.resize(s.size() - 2);
+    s += ")";
+    return s;
+}
+
+void RemoteFiles::applyVersion(const Version &v)
+{
+    decltype(urls) urls2;
+    for (auto &rf : urls)
+    {
+        auto u = rf;
+        ::applyVersion(u, v);
+        urls2.insert(u);
+    }
+    urls = urls2;
+}
+
 void download(const Source &source, int64_t max_file_size)
 {
-    boost::apply_visitor([](auto &v) { v.download(); }, source);
+    std::visit([](auto &v) { v.download(); }, source);
 }
 
 bool isValidSourceUrl(const Source &source)
 {
-    return boost::apply_visitor([](auto &v) { return v.isValidUrl(); }, source);
+    return std::visit([](auto &v) { return v.isValidUrl(); }, source);
 }
 
 bool load_source(const yaml &root, Source &source)
@@ -701,16 +711,15 @@ bool load_source(const yaml &root, Source &source)
         return false;
 
     String s;
-    std::any_of(sources.begin(), sources.end(), [&src, &s](auto &i)
+    for (auto &i : sources)
     {
         YAML_EXTRACT_VAR(src, s, i, String);
         if (!s.empty())
         {
             s = i;
-            return true;
+            break;
         }
-        return false;
-    });
+    }
 
     if (0);
 #define IF_SOURCE(x) else if (s == x::getString()) source = x(src)
@@ -723,7 +732,7 @@ bool load_source(const yaml &root, Source &source)
 void save_source(yaml &root, const Source &source)
 {
     // do not remove 'r' var, it creates 'source' key
-    boost::apply_visitor([&root](auto &v) { auto r = root["source"]; v.save(r); }, source);
+    std::visit([&root](auto &v) { auto r = root["source"]; v.save(r); }, source);
 }
 
 Source load_source(const ptree &p)
@@ -742,7 +751,7 @@ Source load_source(const ptree &p)
 
 void save_source(ptree &p, const Source &source)
 {
-    return boost::apply_visitor([&p](auto &v)
+    return std::visit([&p](auto &v)
     {
         ptree p2;
         v.save(p2);
@@ -752,5 +761,15 @@ void save_source(ptree &p, const Source &source)
 
 String print_source(const Source &source)
 {
-    return boost::apply_visitor([](auto &v) { return v.getString() + ":\n" + v.print(); }, source);
+    return std::visit([](auto &v) { return v.getString() + ":\n" + v.print(); }, source);
+}
+
+String print_source_cpp(const Source &source)
+{
+    return std::visit([](auto &v) { return v.printCpp(); }, source);
+}
+
+void applyVersionToUrl(Source &source, const Version &v)
+{
+    std::visit([&v](auto &s) { s.applyVersion(v); }, source);
 }

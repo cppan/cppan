@@ -37,7 +37,7 @@
 #include <primitives/templates.h>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "package_store");
+//DECLARE_STATIC_LOGGER(logger, "package_store");
 
 // legacy varname rd - was: response data
 PackageStore rd;
@@ -132,6 +132,8 @@ void PackageStore::process(const path &p, Config &root)
     // add more necessary actions here
     for (auto &cc : *this)
     {
+        if (cc.first == Package())
+            continue;
         root.getDefaultProject().checks += cc.second.config->getDefaultProject().checks;
     }
 
@@ -141,6 +143,8 @@ void PackageStore::process(const path &p, Config &root)
     // do not multithread this! causes livelocks
     for (auto &cc : *this)
     {
+        if (cc.first == Package())
+            continue;
         auto &d = cc.first;
 
         auto printer = Printer::create(Settings::get_local_settings().printerType);
@@ -151,7 +155,9 @@ void PackageStore::process(const path &p, Config &root)
         printer->print_meta();
     }
 
-    ScopedCurrentPath cp(p);
+    // have some influence on printer->print_meta();
+    // do not remove
+    ScopedCurrentPath cp(p, CurrentPathScope::All);
 
     // print root config
     auto printer = Printer::create(Settings::get_local_settings().printerType);
@@ -215,11 +221,19 @@ void PackageStore::check_deps_changed()
     // now refresh dependencies database only for remote packages
     // this file (local,current,root) packages will be refreshed anyway
     auto &sdb = getServiceDatabase();
+    std::unordered_map<Package, String> clean_pkgs;
     for (auto &cc : *this)
     {
+        if (cc.first == Package())
+            continue;
+        // make sure we have ordered deps
         Hasher h;
+        StringSet deps;
         for (auto &d : cc.second.dependencies)
-            h |= d.second.target_name;
+            deps.insert(d.second.target_name);
+        for (auto &d : deps)
+            h |= d;
+
         if (!sdb.hasPackageDependenciesHash(cc.first, h.hash))
         {
             deps_changed = true;
@@ -227,17 +241,29 @@ void PackageStore::check_deps_changed()
             // clear exports for this project, so it will be regenerated
             auto p = Printer::create(Settings::get_local_settings().printerType);
             p->clear_export(cc.first.getDirObj());
-            cleanPackages(cc.first.target_name, CleanTarget::Lib | CleanTarget::Bin);
-            sdb.setPackageDependenciesHash(cc.first, h.hash);
+            clean_pkgs.emplace(cc.first, h.hash);
         }
     }
+
+    auto &e = getExecutor();
+    std::vector<Future<void>> fs;
+    for (auto &kv : clean_pkgs)
+    {
+        fs.push_back(e.push([&kv, &sdb]
+        {
+            cleanPackages(kv.first.target_name, CleanTarget::Lib | CleanTarget::Bin | CleanTarget::Obj | CleanTarget::Exp);
+            // set dep hash only after clean
+            sdb.setPackageDependenciesHash(kv.first, kv.second);
+        }));
+    }
+    for (auto &f : fs)
+        f.wait();
+    for (auto &f : fs)
+        f.get();
 }
 
 PackageStore::iterator PackageStore::begin()
 {
-    auto i = packages.find(Package());
-    if (i != packages.end())
-        return ++i;
     return packages.begin();
 }
 
@@ -248,9 +274,6 @@ PackageStore::iterator PackageStore::end()
 
 PackageStore::const_iterator PackageStore::begin() const
 {
-    auto i = packages.find(Package());
-    if (i != packages.end())
-        return ++i;
     return packages.begin();
 }
 
@@ -283,6 +306,8 @@ void PackageStore::write_index() const
     auto &sdb = getServiceDatabase();
     for (auto &cc : *this)
     {
+        if (cc.first == Package())
+            continue;
         sdb.addInstalledPackage(cc.first);
 #ifdef _WIN32
         create_link(cc.first.getDirSrc(), directories.storage_dir_lnk / "src" / (cc.first.target_name + ".lnk"));
@@ -300,9 +325,9 @@ Config *PackageStore::add_config(std::unique_ptr<Config> &&config, bool created)
     return packages[cfg->pkg].config;
 }
 
-Config *PackageStore::add_config(const Package &p)
+Config *PackageStore::add_config(const Package &p, bool local)
 {
-    auto c = std::make_unique<Config>(p.getDirSrc());
+    auto c = std::make_unique<Config>(p.getDirSrc(), local);
     c->setPackage(p);
     return add_config(std::move(c), true);
 }
@@ -315,7 +340,7 @@ Config *PackageStore::add_local_config(const Config &co)
     return cp;
 }
 
-std::tuple<std::set<Package>, Config, String>
+std::tuple<PackagesSet, Config, String>
 PackageStore::read_packages_from_file(path p, const String &config_name, bool direct_dependency)
 {
     download_file(p);
@@ -422,7 +447,7 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
     else if (fs::is_directory(p))
     {
         // config.load() will use proper defaults
-        ScopedCurrentPath cp(p);
+        ScopedCurrentPath cp(p, CurrentPathScope::All);
 
         auto cppan_fn = p / CPPAN_FILENAME;
         auto main_fn = p / "main.cpp";
@@ -487,7 +512,7 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
         conf.setPackage(pkg);
     }
 
-    std::set<Package> packages;
+    PackagesSet packages;
     auto configs = conf.split();
 
     // batch resolve of deps first; merge flags?
@@ -514,13 +539,17 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
     }
 
     Executor e(std::thread::hardware_concurrency() * 2);
-    e.throw_exceptions = true;
+    std::vector<Future<void>> fs;
     for (auto &c : configs)
     {
-        e.push([&c, &p, &cpp_fn, &ppath]()
+        auto f = e.push([&c, &p, &cpp_fn, &ppath]()
         {
             auto &project = c.getDefaultProject();
-            auto root_directory = (fs::is_regular_file(p) ? p.parent_path() : p) / project.root_directory;
+			auto root_directory = fs::is_regular_file(p) ? p.parent_path() : p;
+			if (project.root_directory.is_absolute())
+				root_directory = project.root_directory;
+			else
+				root_directory /= project.root_directory;
 
             // sources
             if (!cpp_fn.empty() && !project.files_loaded)
@@ -533,7 +562,8 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
             LOG_INFO(logger, "Finding sources for " + project.pkg.ppath.slice(2).toString());
             project.findSources(root_directory);
             // maybe remove? let user see cppan.yml in local project
-            project.files.erase(CPPAN_FILENAME);
+            project.files.erase(current_thread_path() / CPPAN_FILENAME);
+			project.files.erase(CPPAN_FILENAME);
             // patch if any
             project.patchSources();
 
@@ -559,8 +589,12 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
                 project.dependencies.insert({ d.second.ppath.toString(), d.second });
             }
         });
+        fs.push_back(f);
     }
-    e.wait();
+    for (auto &f : fs)
+        f.wait();
+    for (auto &f : fs)
+        f.get();
 
     // seq
     for (auto &c : configs)
@@ -578,7 +612,7 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
     // do not remove
     rd.write_index();
 
-    return std::tuple<std::set<Package>, Config, String>{ packages, conf, sname };
+    return std::tuple<PackagesSet, Config, String>{ packages, conf, sname };
 }
 
 bool PackageStore::has_local_package(const ProjectPath &ppath) const

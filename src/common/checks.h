@@ -177,6 +177,7 @@ using ChecksSet = std::set<CheckPtr, CheckPtrLess<CheckPtr>>;
 struct Checks
 {
     ChecksSet checks;
+    bool valid = true;
 
     bool empty() const;
 
@@ -206,10 +207,12 @@ Check::Information getCheckInformation(int type);
 
 struct ParallelCheckOptions
 {
+    path cmake_binary;
     path dir;
     path vars_file;
     path checks_file;
     String generator;
+    String system_version;
     String toolset;
     String toolchain;
 };

@@ -34,10 +34,13 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/nowide/fstream.hpp>
 #include <sqlite3.h>
 
+#include <shared_mutex>
+
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "db");
+//DECLARE_STATIC_LOGGER(logger, "db");
 
 #define PACKAGES_DB_REFRESH_TIME_MINUTES 15
 
@@ -68,6 +71,8 @@ std::vector<StartupAction> startup_actions{
     { 9, StartupAction::ClearStorageDirExp },
     { 10, StartupAction::ClearPackagesDatabase },
     { 11, StartupAction::ServiceDbClearConfigHashes },
+    { 12, StartupAction::ClearStorageDirExp | StartupAction::ClearStorageDirObj },
+    { 13, StartupAction::ClearStorageDirExp },
 };
 
 const TableDescriptors &get_service_tables()
@@ -300,6 +305,10 @@ ServiceDatabase &getServiceDatabaseReadOnly()
 
 PackagesDatabase &getPackagesDatabase()
 {
+    // this holder will init on-disk pkgdb once
+    // later thread local calls will just open it
+    static PackagesDatabase run_once_db;
+
     thread_local
     PackagesDatabase db;
     return db;
@@ -346,10 +355,6 @@ ServiceDatabase::ServiceDatabase()
 {
 }
 
-ServiceDatabase::~ServiceDatabase()
-{
-}
-
 void ServiceDatabase::init()
 {
     RUN_ONCE
@@ -359,6 +364,7 @@ void ServiceDatabase::init()
         increaseNumberOfRuns();
         checkForUpdates();
     };
+
     // move out of RUN_ONCE because it may try to init sdb again
     performStartupActions();
 }
@@ -404,10 +410,9 @@ void ServiceDatabase::recreateTable(const TableDescriptor &td) const
 
 void ServiceDatabase::checkStamp() const
 {
-    bool assigned = false;
     String s;
     db->execute("select * from ClientStamp",
-        [&s, &assigned](SQLITE_CALLBACK_ARGS)
+        [&s](SQLITE_CALLBACK_ARGS)
     {
         s = cols[0];
         return 0;
@@ -438,12 +443,17 @@ void ServiceDatabase::performStartupActions() const
         std::set<int> actions_performed; // prevent multiple execution of the same actions
         for (auto &a : startup_actions)
         {
-            if (isActionPerformed(a) ||
-                actions_performed.find(a.action) != actions_performed.end())
+            if (isActionPerformed(a))
                 continue;
 
+            if (actions_performed.find(a.action) != actions_performed.end())
+            {
+                setActionPerformed(a);
+                continue;
+            }
+
             if (!once)
-                LOG_INFO(logger, "Performing actions for the new client version");
+                LOG_INFO(logger, "Initializing storage");
             once = true;
 
             actions_performed.insert(a.action);
@@ -489,6 +499,11 @@ void ServiceDatabase::performStartupActions() const
             if (a.action & StartupAction::ClearStorageDirExp)
             {
                 remove_all_from_dir(directories.storage_dir_exp);
+            }
+
+            if (a.action & StartupAction::ClearStorageDirObj)
+            {
+                remove_all_from_dir(directories.storage_dir_obj);
             }
 
             if (a.action & StartupAction::ClearStorageDirBin)
@@ -860,6 +875,17 @@ PackagesDatabase::PackagesDatabase()
 {
     db_repo_dir = db_dir / db_repo_dir_name;
 
+    RUN_ONCE
+    {
+        init();
+    };
+
+    // at the end we always reopen packages db as read only
+    open(true);
+}
+
+void PackagesDatabase::init()
+{
     if (created)
     {
         LOG_INFO(logger, "Packages database was not found");
@@ -888,19 +914,15 @@ PackagesDatabase::PackagesDatabase()
             });
         }
     }
-
-    // at the end we always reopen packages db as read only
-    open(true);
 }
 
 void PackagesDatabase::download()
 {
     LOG_INFO(logger, "Downloading database");
 
-    fs::create_directories(db_repo_dir);
-
     auto download_archive = [this]()
     {
+        fs::create_directories(db_repo_dir);
         auto fn = get_temp_filename();
         download_file(db_master_url, fn, 1_GB);
         auto unpack_dir = get_temp_filename();
@@ -912,13 +934,14 @@ void PackagesDatabase::download()
     };
 
     const String git = "git";
-    if (resolve_executable(git))
+    if (!primitives::resolve_executable(git).empty())
     {
         auto git_init = [this, &git]()
         {
-            command::execute({ git,"-C",db_repo_dir.string(),"init","." });
-            command::execute({ git,"-C",db_repo_dir.string(),"remote","add","github",db_repo_url });
-            command::execute({ git,"-C",db_repo_dir.string(),"pull","github","master" });
+            fs::create_directories(db_repo_dir);
+            primitives::Command::execute({ git,"-C",db_repo_dir.string(),"init","." });
+            primitives::Command::execute({ git,"-C",db_repo_dir.string(),"remote","add","github",db_repo_url });
+            primitives::Command::execute({ git,"-C",db_repo_dir.string(),"pull","github","master" });
         };
 
         try
@@ -929,8 +952,10 @@ void PackagesDatabase::download()
             }
             else
             {
-                if (command::execute({ git,"-C",db_repo_dir.string(),"pull","github","master" }).rc ||
-                    command::execute({ git,"-C",db_repo_dir.string(),"reset","--hard" }).rc)
+                std::error_code ec1, ec2;
+                primitives::Command::execute({ git,"-C",db_repo_dir.string(),"pull","github","master" }, ec1);
+                primitives::Command::execute({ git,"-C",db_repo_dir.string(),"reset","--hard" }, ec2);
+                if (ec1 || ec2)
                 {
                     // can throw
                     fs::remove_all(db_repo_dir);
@@ -997,7 +1022,7 @@ void PackagesDatabase::load(bool drop)
             throw std::runtime_error(sqlite3_errmsg(mdb));
 
         auto fn = db_repo_dir / (td.name + ".csv");
-        std::ifstream ifile(fn.string());
+        boost::nowide::ifstream ifile(fn.string());
         if (!ifile)
             throw std::runtime_error("Cannot open file " + fn.string() + " for reading");
 
@@ -1082,7 +1107,7 @@ IdDependencies PackagesDatabase::findDependencies(const Packages &deps) const
             // TODO: replace later with typed exception, so client will try to fetch same package from server
             throw std::runtime_error("Package '" + project.ppath.toString() + "' not found.");
 
-        auto find_deps = [&dep, &all_deps, this](auto &dependency)
+        auto find_deps = [&all_deps, this](auto &dependency)
         {
             dependency.flags.set(pfDirectDependency);
             dependency.id = getExactProjectVersionId(dependency, dependency.version, dependency.flags, dependency.hash);
@@ -1141,7 +1166,7 @@ IdDependencies PackagesDatabase::findDependencies(const Packages &deps) const
     for (auto &ad : all_deps)
     {
         auto &d = ad.second;
-        std::set<ProjectVersionId> ids;
+        std::unordered_set<ProjectVersionId> ids;
         for (auto &dd2 : d.db_dependencies)
             ids.insert(dd2.second.id);
         d.setDependencyIds(ids);
@@ -1415,26 +1440,33 @@ PackagesSet PackagesDatabase::getDependentPackages(const Package &pkg)
     ProjectId project_id = getPackageId(pkg.ppath);
 
     // 2. Find project versions dependent on this version.
-    std::set<std::pair<String, String>> pkgs_s;
+    // Probably set to ProjectVersionId, String, String to prevent throwing exceptions, but left as is for now.
+    std::set<std::tuple<Version, String, String>> pkgs_s;
     db->execute(
-        "select path, case when branch is not null then branch else major || '.' || minor || '.' || patch end as version "
-        "from ProjectVersionDependencies "
-        "join ProjectVersions on ProjectVersions.id = project_version_id "
-        "join Projects on Projects.id = project_id "
-        "where project_dependency_id = '" + std::to_string(project_id) + "'",
+        R"(select version, path,
+        case when branch is not null then branch else major || '.' || minor || '.' || patch end as version2
+        from ProjectVersionDependencies
+        join ProjectVersions on ProjectVersions.id = project_version_id
+        join Projects on Projects.id = project_id
+        where project_dependency_id = ')" + std::to_string(project_id) + "'",
         [&pkgs_s](SQLITE_CALLBACK_ARGS)
     {
-        pkgs_s.insert({ cols[0], cols[1] });
+        pkgs_s.emplace(cols[0], cols[1], cols[2]);
         return 0;
     });
 
+    // 3. Match versions.
     for (auto &p : pkgs_s)
     {
-        Package pkg;
-        pkg.ppath = p.first;
-        pkg.version = p.second;
-        pkg.createNames();
-        r.insert(pkg);
+        auto &v = std::get<0>(p);
+        if (v == pkg.version || v.canBe(pkg.version))
+        {
+            Package d;
+            d.ppath = std::get<1>(p);
+            d.version = std::get<2>(p);
+            d.createNames();
+            r.insert(d);
+        }
     }
 
     return r;
@@ -1458,22 +1490,36 @@ PackagesSet PackagesDatabase::getDependentPackages(const PackagesSet &pkgs)
 
 PackagesSet PackagesDatabase::getTransitiveDependentPackages(const PackagesSet &pkgs)
 {
+    using Retrieved = std::unordered_map<Package, PackagesSet>;
+
+    static std::shared_mutex m;
+    static Retrieved retrieved;
+
     auto r = pkgs;
-    std::map<Package, bool> retrieved;
     while (1)
     {
         bool changed = false;
 
         for (auto &pkg : r)
         {
-            if (retrieved[pkg])
-                continue;
+            {
+                std::shared_lock<std::shared_mutex> lk(m);
+                auto i = retrieved.find(pkg);
+                if (i != retrieved.end())
+                {
+                    r.insert(i->second.begin(), i->second.end());
+                    continue;
+                }
+            }
 
-            retrieved[pkg] = true;
             changed = true;
 
             auto dpkgs = getDependentPackages(pkg);
             r.insert(dpkgs.begin(), dpkgs.end());
+            {
+                std::unique_lock<std::shared_mutex> lk(m);
+                retrieved[pkg] = dpkgs;
+            }
             break;
         }
 

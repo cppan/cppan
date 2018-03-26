@@ -26,12 +26,13 @@
 #include "stamp.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/nowide/fstream.hpp>
 
 #include <primitives/hasher.h>
 #include <primitives/templates.h>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "settings");
+//DECLARE_STATIC_LOGGER(logger, "settings");
 
 void BuildSettings::set_build_dirs(const String &name)
 {
@@ -93,12 +94,12 @@ void Settings::load(const yaml &root, const SettingsType type)
         }
     };
 
-    auto get_build_dir = [this](const path &p, SettingsType type, const auto &dirs)
+    auto get_build_dir = [](const path &p, SettingsType type, const auto &dirs)
     {
         switch (type)
         {
         case SettingsType::Local:
-            return fs::current_path();
+            return current_thread_path();
         case SettingsType::User:
         case SettingsType::System:
             return dirs.storage_dir_tmp / "build";
@@ -145,6 +146,8 @@ void Settings::load_main(const yaml &root, const SettingsType type)
     });
 
     YAML_EXTRACT_AUTO(disable_update_checks);
+    YAML_EXTRACT_AUTO(max_download_threads);
+    YAML_EXTRACT_AUTO(debug_generated_cmake_configs);
     YAML_EXTRACT(storage_dir, String);
     YAML_EXTRACT(build_dir, String);
     YAML_EXTRACT(cppan_dir, String);
@@ -185,6 +188,8 @@ void Settings::load_main(const yaml &root, const SettingsType type)
     YAML_EXTRACT_AUTO(verify_all);
     YAML_EXTRACT_AUTO(copy_all_libraries_to_output);
     YAML_EXTRACT_AUTO(copy_import_libs);
+    YAML_EXTRACT_AUTO(rc_enabled);
+    YAML_EXTRACT_AUTO(short_local_names);
     YAML_EXTRACT_AUTO(full_path_executables);
     YAML_EXTRACT_AUTO(var_check_jobs);
     YAML_EXTRACT_AUTO(install_prefix);
@@ -253,6 +258,7 @@ void Settings::load_build(const yaml &root)
     YAML_EXTRACT_AUTO(link_libraries);
     YAML_EXTRACT_AUTO(configuration);
     YAML_EXTRACT_AUTO(generator);
+    YAML_EXTRACT_AUTO(system_version);
     YAML_EXTRACT_AUTO(toolset);
     YAML_EXTRACT_AUTO(use_shared_libs);
     YAML_EXTRACT_VAR(root, use_shared_libs, "build_shared_libs", bool);
@@ -265,6 +271,8 @@ void Settings::load_build(const yaml &root)
     YAML_EXTRACT_AUTO(verify_all);
     YAML_EXTRACT_AUTO(copy_all_libraries_to_output);
     YAML_EXTRACT_AUTO(copy_import_libs);
+    YAML_EXTRACT_AUTO(rc_enabled);
+    YAML_EXTRACT_AUTO(short_local_names);
     YAML_EXTRACT_AUTO(full_path_executables);
     YAML_EXTRACT_AUTO(var_check_jobs);
     YAML_EXTRACT_AUTO(install_prefix);
@@ -340,8 +348,11 @@ String Settings::get_hash() const
         h |= link_flags_conf[i];
     h |= link_libraries;
     h |= generator;
+    h |= system_version;
     h |= toolset;
     h |= use_shared_libs;
+    h |= configuration;
+    h |= default_configuration;
 
     // besides we track all valuable ENV vars
     // to be sure that we'll load correct config
@@ -447,22 +458,33 @@ Settings &Settings::get(SettingsType type)
         break;
     case SettingsType::User:
     {
+        std::exception_ptr eptr;
         RUN_ONCE
         {
-            s = get(SettingsType::System);
-
-            auto fn = get_config_filename();
-            if (!fs::exists(fn))
+            try
             {
-                boost::system::error_code ec;
-                fs::create_directories(fn.parent_path(), ec);
-                if (ec)
-                    throw std::runtime_error(ec.message());
-                auto ss = get(SettingsType::System);
-                ss.save(fn);
+                s = get(SettingsType::System);
+
+                auto fn = get_config_filename();
+                if (!fs::exists(fn))
+                {
+                    boost::system::error_code ec;
+                    fs::create_directories(fn.parent_path(), ec);
+                    if (ec)
+                        throw std::runtime_error(ec.message());
+                    auto ss = get(SettingsType::System);
+                    ss.save(fn);
+                }
+                s.load(fn, SettingsType::User);
             }
-            s.load(fn, SettingsType::User);
+            catch (...)
+            {
+                eptr = std::current_exception();
+            }
         };
+
+        if (eptr)
+            std::rethrow_exception(eptr);
     }
         break;
     case SettingsType::System:
@@ -475,6 +497,8 @@ Settings &Settings::get(SettingsType type)
             s.load(fn, SettingsType::System);
         };
     }
+        break;
+    default:
         break;
     }
     return s;
@@ -502,7 +526,7 @@ void Settings::clear_local_settings()
 
 void Settings::save(const path &p) const
 {
-    std::ofstream o(p.string());
+    boost::nowide::ofstream o(p.string());
     if (!o)
         throw std::runtime_error("Cannot open file: " + p.string());
     yaml root;

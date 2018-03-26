@@ -18,6 +18,8 @@
 
 #include <primitives/filesystem.h>
 
+#include <unordered_map>
+
 #define STAMPS_DIR "stamps"
 #define STORAGE_DIR "storage"
 #define CPPAN_FILENAME "cppan.yml"
@@ -34,4 +36,4 @@ path get_temp_filename(const path &subdir = path());
 String get_stamp_filename(const String &prefix);
 String make_archive_name(const String &fn = String());
 
-path findRootDirectory(const path &p = fs::current_path());
+path findRootDirectory(const path &p);

@@ -23,12 +23,13 @@
 #include "lock.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/nowide/fstream.hpp>
 
-#include <iostream>
 #include <regex>
+#include <shared_mutex>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "package");
+//DECLARE_STATIC_LOGGER(logger, "package");
 
 path Package::getDir(const path &p) const
 {
@@ -57,7 +58,7 @@ path Package::getStampFilename() const
 String Package::getStampHash() const
 {
     String hash;
-    std::ifstream ifile(getStampFilename().string());
+    boost::nowide::ifstream ifile(getStampFilename().string());
     if (ifile)
         ifile >> hash;
     return hash;
@@ -95,7 +96,7 @@ void Package::createNames()
 {
     auto v = version.toAnyVersion();
 
-    target_name   = ppath.toString() + (v == "*" ? "" : ("-" + v));
+    target_name = ppath.toString() + (v == "*" ? "" : ("-" + v));
 
     // for local projects we use simplified variable name without
     // the second dir hash argument
@@ -148,6 +149,18 @@ Package extractFromString(const String &target)
     return p;
 }
 
+Package extractFromStringAny(const String &target)
+{
+    auto pos = target.rfind('-');
+
+    Package p;
+    p.ppath = target.substr(0, pos);
+    if (pos != target.npos)
+        p.version = target.substr(pos + 1);
+    p.createNames();
+    return p;
+}
+
 void cleanPackages(const String &s, int flags)
 {
     // on source flag remove all
@@ -170,16 +183,6 @@ void cleanPackages(const String &s, int flags)
     if (pkgs.empty())
         return;
 
-    // find dependent packages and remove non installed
-    auto dpkgs = getPackagesDatabase().getTransitiveDependentPackages(pkgs);
-    for (auto i = dpkgs.begin(); i != dpkgs.end();)
-    {
-        if (ipkgs.find(*i) == ipkgs.end())
-            i = dpkgs.erase(i);
-        else
-            ++i;
-    }
-
     cleanPackages(pkgs, flags);
 
     if (flags & CleanTarget::Src)
@@ -191,13 +194,23 @@ void cleanPackages(const String &s, int flags)
                 CleanTarget::Exp ;
     }
 
+    // find dependent packages and remove non installed
+    auto dpkgs = getPackagesDatabase().getTransitiveDependentPackages(pkgs);
+    for (auto i = dpkgs.begin(); i != dpkgs.end();)
+    {
+        if (ipkgs.find(*i) == ipkgs.end())
+            i = dpkgs.erase(i);
+        else
+            ++i;
+    }
+
     cleanPackages(dpkgs, flags);
 }
 
 void cleanPackage(const Package &pkg, int flags)
 {
-    static std::map<Package, int> cleaned_packages;
-    static shared_mutex m;
+    static std::unordered_map<Package, int> cleaned_packages;
+    static std::shared_mutex m;
 
     static const auto cache_dir_bin = enumerate_files(directories.storage_dir_bin);
     static const auto cache_dir_exp = enumerate_files(directories.storage_dir_exp);
@@ -206,16 +219,33 @@ void cleanPackage(const Package &pkg, int flags)
     static const auto cache_dir_lnk = enumerate_files(directories.storage_dir_lnk);
 #endif
 
+    auto &sdb = getServiceDatabase();
+
+    // Clean only installed packages.
+    if (sdb.getInstalledPackageId(pkg) == 0)
+        return;
+
     // only clean yet uncleaned flags
     {
-        std::shared_lock<shared_mutex> lock(m);
+        std::shared_lock<std::shared_mutex> lock(m);
         auto i = cleaned_packages.find(pkg);
         if (i != cleaned_packages.end())
-            flags = flags & ~i->second;
+            flags &= ~i->second;
+        if (flags == 0)
+            return;
     }
 
-    if (flags == 0)
-        return;
+    // save cleaned packages
+    {
+        std::unique_lock<std::shared_mutex> lock(m);
+        auto &f = cleaned_packages[pkg];
+        flags &= ~f;
+        f |= flags;
+
+        // double check, we have no upgrade lock
+        if (flags == 0)
+            return;
+    }
 
     // log message
     {
@@ -282,12 +312,6 @@ void cleanPackage(const Package &pkg, int flags)
         auto &sdb = getServiceDatabase();
         sdb.removeInstalledPackage(pkg);
     }
-
-    // save cleaned packages
-    {
-        std::lock_guard<shared_mutex> lock(m);
-        cleaned_packages[pkg] |= flags;
-    }
 }
 
 void cleanPackages(const PackagesSet &pkgs, int flags)
@@ -296,9 +320,9 @@ void cleanPackages(const PackagesSet &pkgs, int flags)
         cleanPackage(pkg, flags);
 }
 
-std::map<int, String> CleanTarget::getStringsById()
+std::unordered_map<int, String> CleanTarget::getStringsById()
 {
-    static std::map<int, String> m
+    static std::unordered_map<int, String> m
     {
 #define ADD(x) { CleanTarget::x, boost::to_lower_copy(String(#x)) }
 
@@ -314,10 +338,10 @@ std::map<int, String> CleanTarget::getStringsById()
     return m;
 }
 
-std::map<String, int> CleanTarget::getStrings()
+std::unordered_map<String, int> CleanTarget::getStrings()
 {
     auto m = CleanTarget::getStringsById();
-    std::map<String, int> m2;
+    std::unordered_map<String, int> m2;
     for (auto &s : m)
         m2[s.second] = s.first;
     return m2;

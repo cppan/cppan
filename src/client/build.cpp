@@ -31,7 +31,7 @@
 #include <iostream>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "build");
+//DECLARE_STATIC_LOGGER(logger, "build");
 
 int build_packages(const String &name, const PackagesSet &pkgs, const path &settings_fn, const String &config);
 int build_packages(const String &name, const PackagesSet &pkgs);
@@ -61,6 +61,7 @@ String test_run()
     s.disable_checks = true;
     s.source_directory = src_dir;
     s.binary_directory = bin_dir;
+    s.test_run = true;
 
     auto printer = Printer::create(Settings::get_local_settings().printerType);
     printer->prepare_build(s);

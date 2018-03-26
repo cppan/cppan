@@ -26,7 +26,7 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
 # Use solution folders.
@@ -42,9 +42,24 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets")
 project(cppan_client C CXX)
 
 if (NOT DEFINED VERSION_MAJOR)
-set(VERSION_MAJOR 0)
-set(VERSION_MINOR 2)
-set(VERSION_PATCH 3)
+    set(VERSION_MAJOR 0)
+    set(VERSION_MINOR 2)
+    set(VERSION_PATCH 5)
+    set(BUILD_NUMBER 0)
+    set(CPPAN_VERSION_STRING ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+
+    find_program(git git)
+    if (NOT "${git}" STREQUAL "git-NOTFOUND")
+        execute_process(
+            COMMAND git rev-list --count HEAD
+            OUTPUT_VARIABLE BUILD_NUMBER2
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
+        if (BUILD_NUMBER2)
+            set(BUILD_NUMBER ${BUILD_NUMBER2})
+        endif()
+    endif()
 endif()
 
 # Output directory settings
@@ -61,15 +76,20 @@ find_package(FLEX)
 ################################################################################
 
 if (CPPAN_TEST)
-add_definitions(-DCPPAN_TEST)
+add_definitions(/DCPPAN_TEST)
 endif()
 
 if (WIN32)
-    #add_definitions(-DUNICODE)
+    add_definitions(/DUNICODE)
     if (MSVC)
-        set(disable_msvc_warnings "/W3 /wd4458 /wd4714 /wd4127 /wd4275 -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP ${disable_msvc_warnings}")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP ${disable_msvc_warnings}")
+        set(disable_msvc_warnings "/W3 /wd4458 /wd4714 /wd4127 /wd4275 /D_SCL_SECURE_NO_WARNINGS /D_CRT_SECURE_NO_WARNINGS /D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${disable_msvc_warnings}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${disable_msvc_warnings}")
+
+        if (NOT CLANG)
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+        endif()
 
         if (MSVC_STATIC_RUNTIME)
             set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
@@ -79,7 +99,19 @@ if (WIN32)
 endif(WIN32)
 
 if(UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -stdlib=libc++")
+    #set(CMAKE_EXE_LINKER_FLAGS "-lc++abi")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+endif()
+if(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std:c++17")
+endif()
+
+if (CLANG)
+    set(flags "-Wno-assume -Wno-potentially-evaluated-expression -Wno-delete-non-virtual-dtor")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flags}")
 endif()
 
 ################################################################################
@@ -92,7 +124,7 @@ if (NOT DEFINED CPPAN_BUILD_SHARED_LIBS)
     set(CPPAN_BUILD_SHARED_LIBS 0)
 endif()
 if (NOT WIN32)
-    set(CPPAN_USE_CACHE 0)
+    set(CPPAN_USE_CACHE 1)
 endif()
 add_subdirectory(.cppan)
 
@@ -161,13 +193,16 @@ elseif (APPLE)
 add_custom_target(package_client
     COMMAND zip -FS -j -9 cppan-master-macOS-client.zip $<TARGET_FILE:client>
 )
+elseif (EXISTS /etc/centos-release)
+add_custom_target(package_client
+    COMMAND ${CMAKE_CPACK_COMMAND}
+        -G RPM
+        -D CPACK_COMPONENTS_ALL=client
+)
 else()
 add_custom_target(package_client
     COMMAND ${CMAKE_CPACK_COMMAND}
         -G DEB
-        -D CPACK_COMPONENTS_ALL=client
-    COMMAND ${CMAKE_CPACK_COMMAND}
-        -G RPM
         -D CPACK_COMPONENTS_ALL=client
     COMMAND zip -FS -j -9 cppan-master-Linux-client.zip $<TARGET_FILE:client>
 )

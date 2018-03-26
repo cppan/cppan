@@ -16,7 +16,7 @@ if (FLEX_FOUND AND BISON_FOUND)
     FLEX_TARGET(lexer
         "${CMAKE_CURRENT_SOURCE_DIR}/lexer.ll"
         "${CMAKE_CURRENT_SOURCE_DIR}/lexer.cpp"
-        COMPILE_FLAGS --header-file=${CMAKE_CURRENT_SOURCE_DIR}/lexer.h
+        COMPILE_FLAGS "--header-file=${CMAKE_CURRENT_SOURCE_DIR}/lexer.h -L"
     )
     ADD_FLEX_BISON_DEPENDENCY(lexer grammar)
 
@@ -40,6 +40,10 @@ else()
 endif()
 
 add_library(bazel_parser ${parser_src} ${bazel_parser_src})
+target_link_libraries(bazel_parser
+    common
+    pvt.cppan.demo.imageworks.pystring
+)
 set_property(TARGET bazel_parser PROPERTY FOLDER parse)
 
 ########################################

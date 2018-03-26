@@ -36,7 +36,7 @@
 #include <primitives/templates.h>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "resolver");
+//DECLARE_STATIC_LOGGER(logger, "resolver");
 
 #define CURRENT_API_LEVEL 1
 
@@ -200,7 +200,7 @@ void Resolver::resolve(const Packages &deps, std::function<void()> resolve_actio
     }
 }
 
-void Resolver::download(const DownloadDependency &d, const path &fn)
+void Resolver::download(const ExtendedPackageData &d, const path &fn)
 {
     if (!d.remote->downloadPackage(d, d.hash, fn, query_local_db))
     {
@@ -235,7 +235,7 @@ void Resolver::download_and_unpack()
         {
             // download is in progress, wait and register config
             ScopedFileLock lck2(hash_file);
-            rd.add_config(d);
+            rd.add_config(d, false);
             return;
         }
 
@@ -264,8 +264,9 @@ void Resolver::download_and_unpack()
         {
             files = unpack_file(fn, version_dir);
         }
-        catch (...)
+        catch (std::exception &e)
         {
+            LOG_ERROR(logger, e.what());
             fs::remove(fn);
             fs::remove_all(version_dir);
             throw;
@@ -274,7 +275,7 @@ void Resolver::download_and_unpack()
 
         // re-read in any case
         // no need to remove old config, let it die with program
-        auto c = rd.add_config(d);
+        auto c = rd.add_config(d, false);
 
         // move all files under unpack dir
         auto ud = c->getDefaultProject(d.ppath).unpack_directory;
@@ -302,17 +303,21 @@ void Resolver::download_and_unpack()
         }
     };
 
-    Executor e(get_max_threads(8), "Download thread");
-    e.throw_exceptions = true;
+    Executor e(Settings::get_local_settings().max_download_threads, "Download thread");
+    std::vector<Future<void>> fs;
 
     // threaded execution does not preserve object creation/destruction order,
     // so current path is not correctly restored
-    ScopedCurrentPath cp;
+    // TODO: remove this! we must correctly run programs without this
+    ScopedCurrentPath cp(CurrentPathScope::All);
 
     for (auto &dd : download_dependencies_)
-        e.push([&download_dependency, &dd] { download_dependency(dd); });
+        fs.push_back(e.push([&download_dependency, &dd] { download_dependency(dd); }));
 
-    e.wait();
+    for (auto &f : fs)
+        f.wait();
+    for (auto &f : fs)
+        f.get();
 
     // two following blocks use executor to do parallel queries
     if (query_local_db)
@@ -338,7 +343,7 @@ void Resolver::download_and_unpack()
             try
             {
                 HttpRequest req = httpSettings;
-                req.type = HttpRequest::POST;
+                req.type = HttpRequest::Post;
                 req.url = current_remote->url + "/api/add_downloads";
                 req.data = ptree2string(request);
                 auto resp = url_request(req);
@@ -357,7 +362,7 @@ void Resolver::download_and_unpack()
             try
             {
                 HttpRequest req = httpSettings;
-                req.type = HttpRequest::POST;
+                req.type = HttpRequest::Post;
                 req.url = current_remote->url + "/api/add_client_call";
                 req.data = "{}"; // empty json
                 auto resp = url_request(req);
@@ -374,7 +379,11 @@ void Resolver::download_and_unpack()
 void Resolver::post_download()
 {
     for (auto &cc : rd)
+    {
+        if (cc.first == Package())
+            continue;
         prepare_config(cc);
+    }
 }
 
 void Resolver::prepare_config(PackageStore::PackageConfigs::value_type &cc)
@@ -389,7 +398,7 @@ void Resolver::prepare_config(PackageStore::PackageConfigs::value_type &cc)
         return;
 
     // prepare deps: extract real deps flags from configs
-    for (auto &dep : download_dependencies_[p].getDependencies())
+    for (auto &dep : download_dependencies_[p].dependencies)
     {
         auto d = dep.second;
         auto i = project.dependencies.find(d.ppath.toString());
@@ -400,7 +409,7 @@ void Resolver::prepare_config(PackageStore::PackageConfigs::value_type &cc)
             std::set<String> to_remove;
             for (auto &root_dep : project.dependencies)
             {
-                for (auto &child_dep : download_dependencies_[p].getDependencies())
+                for (auto &child_dep : download_dependencies_[p].dependencies)
                 {
                     if (root_dep.second.ppath.is_root_of(child_dep.second.ppath))
                     {
@@ -435,13 +444,28 @@ void Resolver::read_configs()
         read_config(d.second);
 }
 
-void Resolver::read_config(const DownloadDependency &d)
+void Resolver::read_config(const ExtendedPackageData &d)
 {
     if (!fs::exists(d.getDirSrc()))
+    {
+        LOG_DEBUG(logger, "Config dir does not exist: " << d.target_name);
         return;
+    }
 
     if (rd.packages.find(d) != rd.packages.end())
+    {
+        LOG_DEBUG(logger, "Package does not exist: " << d.target_name);
         return;
+    }
+
+    // CPPAN_FILENAME must exist
+    if (!fs::exists(d.getDirSrc() / CPPAN_FILENAME))
+    {
+        // if not - remove dir and fix everything on the next run
+        fs::remove_all(d.getDirSrc());
+        throw std::runtime_error("There is an error that cannot be resolved during this run, please, restart the program");
+    }
+
     // keep some set data for re-read configs
     //auto oldi = rd.packages.find(d);
     // Config::created is needed for patching sources and other initialization stuff
@@ -449,8 +473,8 @@ void Resolver::read_config(const DownloadDependency &d)
 
     try
     {
-        auto p = rd.config_store.insert(std::make_unique<Config>(d.getDirSrc()));
-        auto ptr = rd.packages[d].config = p.first->get();
+        auto p = rd.config_store.insert(std::make_unique<Config>(d.getDirSrc(), false));
+        /*auto ptr = */rd.packages[d].config = p.first->get();
         //ptr->created = created;
     }
     catch (DependencyNotResolved &)
@@ -533,7 +557,7 @@ Resolver::Dependencies getDependenciesFromRemote(const Packages &deps, const Rem
                 HttpRequest req = httpSettings;
                 req.connect_timeout = ct;
                 req.timeout = t;
-                req.type = HttpRequest::POST;
+                req.type = HttpRequest::Post;
                 req.url = current_remote->url + "/api/find_dependencies";
                 req.data = ptree2string(request);
                 resp = url_request(req);
@@ -598,7 +622,6 @@ Resolver::Dependencies getDependenciesFromRemote(const Packages &deps, const Rem
 
     // set id dependencies
     IdDependencies id_deps;
-    int unresolved = (int)deps.size();
     auto &remote_packages = dependency_tree.get_child("packages");
     for (auto &v : remote_packages)
     {
@@ -615,19 +638,43 @@ Resolver::Dependencies getDependenciesFromRemote(const Packages &deps, const Rem
 
         if (v.second.find(DEPENDENCIES_NODE) != v.second.not_found())
         {
-            std::set<ProjectVersionId> idx;
+            std::unordered_set<ProjectVersionId> idx;
             for (auto &tree_dep : v.second.get_child(DEPENDENCIES_NODE))
                 idx.insert(tree_dep.second.get_value<ProjectVersionId>());
             d.setDependencyIds(idx);
         }
 
         id_deps[id] = d;
-
-        unresolved--;
     }
 
-    if (unresolved > 0)
-        throw std::runtime_error("Some packages (" + std::to_string(unresolved) + ") are unresolved");
+    // check resolved packages
+    auto d2 = deps;
+    for (auto &d : id_deps)
+        d2.erase(d.second.ppath);
+    if (!d2.empty())
+    {
+        // probably we have only root or dir dependency left
+        // that is called from command line
+        bool ok = false;
+        if (d2.size() == 1 &&
+            std::any_of(id_deps.begin(), id_deps.end(), [&d2](const auto &e) {
+                return d2.begin()->second.ppath.is_root_of(e.second.ppath);
+            }))
+        {
+            LOG_WARN(logger, "Skipping unresolved project: " + d2.begin()->second.target_name + ". Probably this is intended");
+            ok = true;
+        }
+
+        if (!ok)
+        {
+            for (auto &d : d2)
+            {
+                d.second.createNames();
+                LOG_FATAL(logger, "Unresolved package or its dependencies: " + d.second.target_name);
+            }
+            throw std::runtime_error("Some packages (" + std::to_string(d2.size()) + ") are unresolved");
+        }
+    }
 
     return prepareIdDependencies(id_deps, current_remote);
 }

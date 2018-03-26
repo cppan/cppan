@@ -12,8 +12,10 @@ if (EXECUTABLE)
 endif()
 
 # after all settings
+set(CPPAN_GET_CHILDREN_VARIABLES 1)
 get_configuration_variables_unhashed()
 get_configuration_variables()
+set(CPPAN_GET_CHILDREN_VARIABLES 0)
 
 set(build_dir_name build)
 set(build_dir ${current_dir}/${build_dir_name}/${config_dir})
@@ -106,6 +108,28 @@ if (NOT EXISTS ${import} OR
             message(FATAL_ERROR "cppan command '${CPPAN_COMMAND}' not found - ${CMAKE_CURRENT_LIST_FILE} - ${target}")
         endif()
 
+        set(toolset)
+        if (CMAKE_GENERATOR_TOOLSET)
+            set(toolset "-T${CMAKE_GENERATOR_TOOLSET}")
+        endif()
+
+        if (VISUAL_STUDIO_ACCELERATE_CLANG)
+            # speedup builds
+            set(generator Ninja)
+            set(toolset)
+        endif()
+
+        set(linker)
+        # if WIN32? if MSVC? everywhere?
+        if (WIN32 AND (VISUAL_STUDIO_ACCELERATE_CLANG OR NINJA))
+            # dont forget to pass linker with ninja!
+            set(linker "-DCMAKE_LINKER=${CMAKE_LINKER}")
+        endif()
+
+        if (CMAKE_SYSTEM_VERSION AND (WIN32 OR APPLE)) # apple too?
+            set(sysver -DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION})
+        endif()
+
         #
         clear_variables(GEN_CHILD_VARS)
         if (NOT EXECUTABLE)
@@ -130,13 +154,10 @@ if (NOT EXISTS ${import} OR
         add_variable(GEN_CHILD_VARS XCODE)
         add_variable(GEN_CHILD_VARS VISUAL_STUDIO)
         add_variable(GEN_CHILD_VARS NINJA)
+        add_variable(GEN_CHILD_VARS NINJA_FOUND)
+        add_variable(GEN_CHILD_VARS CLANG)
         write_variables_file(GEN_CHILD_VARS ${variables_file})
         #
-
-        set(toolset)
-        if (CMAKE_GENERATOR_TOOLSET)
-            set(toolset "-T${CMAKE_GENERATOR_TOOLSET}")
-        endif()
 
         #message(STATUS "")
         message(STATUS "Preparing build tree for ${target} (${config_unhashed} - ${config_dir} - ${generator})")
@@ -144,11 +165,12 @@ if (NOT EXISTS ${import} OR
 
         # call cmake
         if (EXECUTABLE)# AND NOT CPPAN_BUILD_EXECUTABLES_WITH_SAME_CONFIG)
-                # build with the same compiler, generator
+                # build with the same compiler, generator and linker (in some cases)
                 cppan_debug_message("COMMAND ${CMAKE_COMMAND}
                         -H${current_dir} -B${build_dir}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                        ${linker}
                         -DVARIABLES_FILE=${variables_file}
                         -G \"${generator}\""
                 )
@@ -157,11 +179,11 @@ if (NOT EXISTS ${import} OR
                         -H${current_dir} -B${build_dir}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                        ${linker}
                         -DVARIABLES_FILE=${variables_file}
                         -G "${generator}"
                     RESULT_VARIABLE ret
                 )
-                check_result_variable(${ret})
         else()
             if (CMAKE_TOOLCHAIN_FILE)
                 cppan_debug_message("COMMAND ${CMAKE_COMMAND}
@@ -169,7 +191,9 @@ if (NOT EXISTS ${import} OR
                         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
                         -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
                         -G \"${generator}\"
-                        -DVARIABLES_FILE=${variables_file}")
+                        -DVARIABLES_FILE=${variables_file}"
+                        ${sysver}
+                )
                 execute_process(
                     COMMAND ${CMAKE_COMMAND}
                         -H${current_dir} -B${build_dir}
@@ -177,29 +201,33 @@ if (NOT EXISTS ${import} OR
                         -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
                         -G "${generator}"
                         -DVARIABLES_FILE=${variables_file}
+                        ${sysver}
                     RESULT_VARIABLE ret
                 )
-                check_result_variable(${ret})
             else(CMAKE_TOOLCHAIN_FILE)
                 cppan_debug_message("COMMAND ${CMAKE_COMMAND}
                         -H${current_dir} -B${build_dir}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -G \"${generator}\"
-                        -DVARIABLES_FILE=${variables_file}")
+                        -DVARIABLES_FILE=${variables_file}"
+                        ${sysver}
+                )
                 execute_process(
                     COMMAND ${CMAKE_COMMAND}
                         -H${current_dir} -B${build_dir}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                        ${linker}
                         -G "${generator}"
                         ${toolset}
                         -DVARIABLES_FILE=${variables_file}
+                        ${sysver}
                     RESULT_VARIABLE ret
                 )
-                check_result_variable(${ret})
             endif(CMAKE_TOOLCHAIN_FILE)
         endif()
+        check_result_variable(${ret})
 
         # fix imports
         # TODO: move exports to exp dir

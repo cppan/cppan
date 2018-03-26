@@ -34,8 +34,12 @@ set(common_src ${common_src})
 add_library(support ${common_src})
 target_include_directories(support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/support)
 
+if (UNIX AND NOT APPLE AND NOT EXISTS "/etc/centos-release")
+target_link_libraries(support backtrace)
+endif()
 target_link_libraries(support
-    pvt.cppan.demo.apolukhin.stacktrace
+    pvt.cppan.demo.boost.property_tree
+    pvt.cppan.demo.boost.stacktrace
     pvt.egorpugin.primitives.context
     pvt.egorpugin.primitives.hash
     pvt.egorpugin.primitives.http
@@ -58,6 +62,7 @@ set(gen_src
     ${CMAKE_CURRENT_SOURCE_DIR}/inserts/header.cmake
     ${CMAKE_CURRENT_SOURCE_DIR}/inserts/version.rc.in
     ${CMAKE_CURRENT_SOURCE_DIR}/inserts/branch.rc.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/inserts/CPPANConfig.cmake
 )
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/inserts.cpp
@@ -89,9 +94,11 @@ set(common_src ${common_src}
 add_library(common ${common_src})
 
 target_compile_definitions(common
-    PRIVATE -DVERSION_MAJOR=${VERSION_MAJOR}
-    PRIVATE -DVERSION_MINOR=${VERSION_MINOR}
-    PRIVATE -DVERSION_PATCH=${VERSION_PATCH}
+    PUBLIC -DVERSION_MAJOR=${VERSION_MAJOR}
+    PUBLIC -DVERSION_MINOR=${VERSION_MINOR}
+    PUBLIC -DVERSION_PATCH=${VERSION_PATCH}
+    PUBLIC -DBUILD_NUMBER=${BUILD_NUMBER}
+    PUBLIC -DCPPAN_VERSION_STRING="${CPPAN_VERSION_STRING}"
 )
 target_include_directories(common
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common
@@ -104,12 +111,18 @@ target_link_libraries(common
 
 target_link_libraries(common
     pvt.cppan.demo.sqlite3
+    pvt.cppan.demo.fmt
 
     pvt.egorpugin.primitives.pack
     pvt.egorpugin.primitives.date_time
     pvt.egorpugin.primitives.executor
     pvt.egorpugin.primitives.command
 )
+if (WIN32)
+target_link_libraries(common
+    pvt.cppan.demo.giovannidicanio.winreg
+)
+endif()
 
 ################################################################################
 

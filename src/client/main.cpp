@@ -35,15 +35,17 @@
 #include <verifier.h>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/nowide/args.hpp>
 #include <primitives/pack.h>
-#include <primitives/optional.h>
 #include <primitives/templates.h>
+#include <primitives/executor.h>
+#include <primitives/minidump.h>
 
 #include <iostream>
 #include <thread>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "main");
+//DECLARE_STATIC_LOGGER(logger, "main");
 
 enum class ApiResult
 {
@@ -62,9 +64,16 @@ void self_upgrade_copy(const path &dst);
 optional<int> internal(const Strings &args);
 void command_init(const Strings &args);
 
-int main(int argc, char *argv[])
+int main1(int argc, char *argv[])
 try
 {
+    // library initializations
+    setup_utf8_filesystem();
+
+    // fix arguments - make them UTF-8
+    boost::nowide::args wargs(argc, argv);
+
+    //
     Strings args;
     for (auto i = 0; i < argc; i++)
         args.push_back(argv[i]);
@@ -83,7 +92,7 @@ try
             if (args[i] == "-d"s || args[i] == "--dir"s)
             {
                 if (i + 1 < args.size())
-                    cp = std::make_unique<ScopedCurrentPath>(args[i + 1]);
+                    cp = std::make_unique<ScopedCurrentPath>(args[i + 1], CurrentPathScope::All);
                 else
                     throw std::runtime_error("Missing necessary argument for "s + args[i] + " option");
                 args_copy.erase(args_copy.begin() + i, args_copy.begin() + i + 2);
@@ -129,7 +138,7 @@ try
 
     // handle internal args
     if (auto r = internal(args))
-        return r.get();
+        return r.value();
 
     if (args.size() > 1)
     {
@@ -152,6 +161,39 @@ try
                     return 1;
                 }
                 process_configure_ac(args[2]);
+                return 0;
+            }
+
+            if (cmd == "parse-bazel")
+            {
+                void process_bazel(const path &p, const std::string &libname = "cc_library", const std::string &binname = "cc_binary");
+
+                if (args.size() == 2)
+                {
+                    for (auto &f : bazel_filenames)
+                    {
+                        if (fs::exists(f))
+                        {
+                            process_bazel(f);
+                            return 0;
+                        }
+                    }
+                    std::cout << "invalid number of arguments\n";
+                    std::cout << "usage: cppan parse-bazel BUILD.bazel\n";
+                    return 1;
+                }
+                switch (args.size())
+                {
+                case 3:
+                    process_bazel(args[2]);
+                    break;
+                case 4:
+                    process_bazel(args[2], args[3]);
+                    break;
+                case 5:
+                    process_bazel(args[2], args[3], args[4]);
+                    break;
+                }
                 return 0;
             }
 
@@ -179,6 +221,8 @@ try
                 return 0;
             case ApiResult::Error:
                 return 1;
+            default:
+                break;
             }
 
             // file/url arg
@@ -188,7 +232,7 @@ try
             {
                 if (fs::is_directory(cmd))
                 {
-                    ScopedCurrentPath cp(cmd);
+                    ScopedCurrentPath cp(cmd, CurrentPathScope::All);
                     default_run();
                     return 0;
                 }
@@ -234,7 +278,6 @@ try
 
     httpSettings.verbose = options["curl-verbose"].as<bool>();
     httpSettings.ignore_ssl_checks = options["ignore-ssl-checks"].as<bool>();
-    httpSettings.proxy = Settings::get_local_settings().proxy;
 
     // always first
     if (!r || options().count("help"))
@@ -309,6 +352,22 @@ try
         c.save(p.parent_path());
         return 0;
     }
+    if (options().count("print-cpp"))
+    {
+        auto pkg = extractFromString(options["print-cpp"].as<String>());
+        Config c(pkg.getDirSrc());
+        c.getDefaultProject().pkg = pkg;
+        std::cout << c.getDefaultProject().print_cpp();
+        return 0;
+    }
+    if (options().count("print-cpp2"))
+    {
+        auto pkg = extractFromString(options["print-cpp2"].as<String>());
+        Config c(pkg.getDirSrc());
+        c.getDefaultProject().pkg = pkg;
+        std::cout << c.getDefaultProject().print_cpp2();
+        return 0;
+    }
 
     Settings::get_user_settings().force_server_query = options()[SERVER_QUERY].as<bool>();
 
@@ -367,7 +426,7 @@ try
         Config c;
         c.load_current_config();
         Projects &projects = c.getProjects();
-        const auto cwd = fs::current_path();
+        const auto cwd = current_thread_path();
         for (auto &ps : projects)
         {
             auto &project = ps.second;
@@ -377,11 +436,12 @@ try
             {
                 p = t / fs::unique_path();
                 fs::create_directories(p);
-                fs::current_path(p);
+                current_thread_path(p);
 
                 if (!isValidSourceUrl(project.source))
                     throw std::runtime_error("Source is empty");
 
+                applyVersionToUrl(project.source, project.pkg.version);
                 download(project.source);
                 fs::copy_file(cwd / CPPAN_FILENAME, CPPAN_FILENAME, fs::copy_option::overwrite_if_exists);
             }
@@ -389,7 +449,7 @@ try
             {
                 if (par)
                 {
-                    fs::current_path(cwd);
+                    current_thread_path(cwd);
                     remove_all_from_dir(p);
                 }
             };
@@ -408,8 +468,8 @@ try
 catch (const std::exception &e)
 {
     std::cerr << e.what() << "\n";
-    if (auto st = boost::get_error_info<traced_exception>(e))
-        std::cerr << *st << '\n';
+    //if (auto st = boost::get_error_info<traced_exception>(e))
+        //std::cerr << *st << '\n';
     return 1;
 }
 catch (...)
@@ -418,10 +478,34 @@ catch (...)
     return 1;
 }
 
+int main(int argc, char *argv[])
+{
+#ifndef _WIN32
+    auto r = main1(argc, argv);
+    return r;
+#else
+    primitives::minidump::dir = L"cppan\\dump";
+    primitives::minidump::v_major = VERSION_MAJOR;
+    primitives::minidump::v_minor = VERSION_MINOR;
+    primitives::minidump::v_patch = VERSION_PATCH;
+    primitives::executor::bExecutorUseSEH = true;
+
+    __try
+    {
+        auto r = main1(argc, argv);
+        return r;
+    }
+    __except (PRIMITIVES_GENERATE_DUMP)
+    {
+        return 1;
+    }
+#endif
+}
+
 void check_spec_file()
 {
     // no config - cannot do anything more
-    if (!fs::exists(CPPAN_FILENAME))
+    if (!fs::exists(current_thread_path() / CPPAN_FILENAME))
         throw std::runtime_error("No spec file found");
 }
 
@@ -495,6 +579,9 @@ void load_current_config()
     {
         // ignore everything
     }
+
+    // load proxy settings early
+    httpSettings.proxy = Settings::get_local_settings().proxy;
 }
 
 void self_upgrade()
@@ -531,7 +618,10 @@ void self_upgrade()
     auto arg0 = L"\"" + exe + L"\"";
     auto dst = L"\"" + program.wstring() + L"\"";
     std::cout << "Replacing client" << "\n";
-    if (_wexecl(exe.c_str(), arg0.c_str(), L"internal-self-upgrade-copy", dst.c_str(), 0) == -1)
+    auto cmd_line = arg0 + L" internal-self-upgrade-copy " + dst;
+    STARTUPINFO si = { 0 };
+    PROCESS_INFORMATION pi = { 0 };
+    if (!CreateProcess(exe.c_str(), &cmd_line[0], 0, 0, 0, 0, 0, 0, &si, &pi))
     {
         throw std::runtime_error("errno = "s + std::to_string(errno) + "\n" +
             "Cannot do a self upgrade. Replace this file with newer CPPAN client manually.");
@@ -550,6 +640,7 @@ void self_upgrade_copy(const path &dst)
     int n = 3;
     while (n--)
     {
+        std::cout << "Waiting old program to exit...\n";
         std::this_thread::sleep_for(std::chrono::seconds(2));
         try
         {
@@ -561,7 +652,7 @@ void self_upgrade_copy(const path &dst)
             std::cerr << "Cannot replace program with new executable: " << e.what() << "\n";
             if (n == 0)
                 throw;
-            std::cerr << "Retrying... (" << n + 1 << ")\n";
+            std::cerr << "Retrying... (" << n << ")\n";
         }
     }
     std::cout << "Success!\n";
@@ -600,10 +691,10 @@ optional<int> internal(const Strings &args)
 
     if (args[1] == "internal-parallel-vars-check")
     {
-        if (args.size() < 6)
+        if (args.size() < 7)
         {
             std::cout << "invalid number of arguments: " << args.size() << "\n";
-            std::cout << "usage: cppan internal-parallel-vars-check vars_dir vars_file checks_file generator toolset toolchain\n";
+            std::cout << "usage: cppan internal-parallel-vars-check cmake_binary vars_dir vars_file checks_file generator system_version toolset toolchain\n";
             return 1;
         }
 
@@ -611,10 +702,12 @@ optional<int> internal(const Strings &args)
 
 #define ASSIGN_ARG(x) if (a < args.size()) o.x = trim_double_quotes(args[a++])
         ParallelCheckOptions o;
+        ASSIGN_ARG(cmake_binary);
         ASSIGN_ARG(dir);
         ASSIGN_ARG(vars_file);
         ASSIGN_ARG(checks_file);
         ASSIGN_ARG(generator);
+        ASSIGN_ARG(system_version);
         ASSIGN_ARG(toolset);
         ASSIGN_ARG(toolchain);
 #undef ASSIGN_ARG
@@ -627,36 +720,6 @@ optional<int> internal(const Strings &args)
     if (args[1] == "internal-self-upgrade-copy")
     {
         self_upgrade_copy(args[2]);
-        return 0;
-    }
-
-    if (args[1] == "internal-process-cmake-dependencies")
-    {
-        if (args.size() < 3)
-        {
-            std::cout << "invalid number of arguments: " << args.size() << "\n";
-            std::cout << "usage: cppan internal-process-cmake-dependencies deps.txt [out_dir]\n";
-            return 1;
-        }
-
-        if (args.size() == 4)
-        {
-            Settings::get_local_settings().cppan_dir = args[3];
-            Settings::get_local_settings().meta_target_suffix = args[3];
-        }
-
-        auto deps_file = path(args[2]);
-        auto deps = read_lines(deps_file);
-        Config c;
-        for (auto &d : deps)
-        {
-            Package p;
-            PackagesSet pkgs;
-            std::tie(p, pkgs) = resolve_dependency(d);
-            for (auto &pkg : pkgs)
-                c.getDefaultProject().addDependency(pkg);
-        }
-        c.process(deps_file.parent_path());
         return 0;
     }
 
@@ -946,11 +1009,11 @@ ApiResult api_call(const String &cmd, const Strings &args)
 
     if (cmd == "notifications")
     {
-        auto proj_usage = []
+        /*auto proj_usage = []
         {
             std::cout << "invalid number of arguments\n";
             std::cout << "usage: cppan notifications [origin] [clear] [N]\n";
-        };
+        };*/
 
         size_t arg = 2;
 

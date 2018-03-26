@@ -28,7 +28,7 @@
 #include <primitives/templates.h>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "verifier");
+//DECLARE_STATIC_LOGGER(logger, "verifier");
 
 void verify(const String &target_name)
 {
@@ -85,8 +85,9 @@ void verify(const Package &pkg, path fn)
         LOG_DEBUG(logger, "Downloading original package from source...");
         LOG_DEBUG(logger, print_source(spec.source));
 
-        ScopedCurrentPath cp(dir_original_unprepared);
+        ScopedCurrentPath cp(dir_original_unprepared, CurrentPathScope::All);
 
+        applyVersionToUrl(spec.source, spec.package.version);
         download(spec.source);
         write_file(CPPAN_FILENAME, spec.cppan);
 

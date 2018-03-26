@@ -21,7 +21,7 @@
 #include "settings.h"
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "api");
+//DECLARE_STATIC_LOGGER(logger, "api");
 
 ptree api_call(const Remote &r, const String &api, ptree request)
 {
@@ -34,7 +34,7 @@ ptree api_call(const Remote &r, const String &api, ptree request)
     request.put("auth.token", r.token);
 
     HttpRequest req = httpSettings;
-    req.type = HttpRequest::POST;
+    req.type = HttpRequest::Post;
     req.url = r.url + "/api/" + api;
     req.data = ptree2string(request);
     auto resp = url_request(req);
@@ -147,6 +147,8 @@ void Api::get_notifications(const Remote &r, int n)
                 break;
             case NotificationType::Success:
                 ss << "OK";
+                break;
+            default:
                 break;
         }
         LOG_INFO(logger, ss.str() << " " << ts << " " << t);

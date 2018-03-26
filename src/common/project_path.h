@@ -20,6 +20,8 @@
 #include "filesystem.h"
 #include "yaml.h"
 
+#include <primitives/hash.h>
+
 #define ROOT_PROJECT_PATH(name)           \
     static ProjectPath name()             \
     {                                     \
@@ -152,14 +154,16 @@ void fix_root_project(yaml &root, const ProjectPath &ppath);
 
 namespace std
 {
-    template<> struct hash<ProjectPath>
+
+template<> struct hash<ProjectPath>
+{
+    size_t operator()(const ProjectPath& ppath) const
     {
-        size_t operator()(const ProjectPath& ppath) const
-        {
-            size_t r = 0;
-            for (const auto &e : ppath.path_elements)
-                r ^= std::hash<String>()(e);
-            return r;
-        }
-    };
+        size_t h = 0;
+        for (const auto &e : ppath.path_elements)
+            hash_combine(h, std::hash<String>()(e));
+        return h;
+    }
+};
+
 }

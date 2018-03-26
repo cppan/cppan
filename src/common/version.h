@@ -19,6 +19,8 @@
 #include "cppan_string.h"
 #include "filesystem.h"
 
+#include <primitives/hash.h>
+
 #define LOCAL_VERSION_NAME "local"
 
 using ProjectId = uint64_t;
@@ -74,3 +76,22 @@ struct Version
 
     static bool check_branch_name(const String &n, String *error = nullptr);
 };
+
+namespace std
+{
+
+template<> struct hash<Version>
+{
+    size_t operator()(const Version& v) const
+    {
+        if (!v.branch.empty())
+            return std::hash<String>()(v.branch);
+        size_t h = 0;
+        hash_combine(h, v.major);
+        hash_combine(h, v.minor);
+        hash_combine(h, v.patch);
+        return h;
+    }
+};
+
+}

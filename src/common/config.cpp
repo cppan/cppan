@@ -33,16 +33,18 @@
 #include <iostream>
 
 #include <primitives/log.h>
-DECLARE_STATIC_LOGGER(logger, "config");
+//DECLARE_STATIC_LOGGER(logger, "config");
 
 Config::Config()
 {
     addDefaultProject();
+	dir = current_thread_path();
 }
 
-Config::Config(const path &p)
+Config::Config(const path &p, bool local)
     : Config()
 {
+    is_local = local;
     reload(p);
 }
 
@@ -51,12 +53,13 @@ void Config::reload(const path &p)
     if (fs::is_directory(p))
     {
         dir = p;
-        ScopedCurrentPath cp(p);
+        ScopedCurrentPath cp(dir, CurrentPathScope::Thread);
         load_current_config();
     }
     else
     {
         dir = p.parent_path();
+		ScopedCurrentPath cp(dir, CurrentPathScope::Thread);
         load(p);
     }
 }
@@ -64,7 +67,7 @@ void Config::reload(const path &p)
 void Config::addDefaultProject()
 {
     Project p{ ProjectPath() };
-    p.load(yaml());
+	p.load(yaml());
     p.pkg = pkg;
     projects.clear();
     projects.emplace("", p);
@@ -146,6 +149,7 @@ void Config::load(const yaml &root)
         project.defaults_allowed = defaults_allowed;
         project.allow_relative_project_names = allow_relative_project_names;
         project.allow_local_dependencies = allow_local_dependencies;
+        project.is_local = is_local;
         project.load(root);
         if (project.name.empty())
             project.name = name;

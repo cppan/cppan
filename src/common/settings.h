@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <map>
-
 #include "cppan_string.h"
 #include "filesystem.h"
 #include "http.h"
@@ -27,6 +25,10 @@
 
 #include "printers/printer.h"
 
+#include <primitives/executor.h>
+
+#include <map>
+
 void cleanConfig(const String &config);
 void cleanConfigs(const Strings &configs);
 
@@ -34,6 +36,7 @@ struct BuildSettings
 {
     bool allow_links = true;
     bool disable_checks = false;
+    bool test_run = false;
     String filename;
     String filename_without_ext;
     path source_directory;
@@ -72,6 +75,8 @@ struct Settings
     PrinterType printerType{ PrinterType::CMake };
     // do not check for new cppan version
     bool disable_update_checks = false;
+    int max_download_threads = get_max_threads(8);
+    bool debug_generated_cmake_configs = false;
 
     // build settings
     String c_compiler;
@@ -89,6 +94,7 @@ struct Settings
     String configuration{ "Release" };
     String default_configuration{ "Release" }; // for global settings
     String generator;
+    String system_version;
     String toolset;
 
     std::map<String, String> env;
@@ -117,6 +123,8 @@ struct Settings
     bool copy_all_libraries_to_output = false;
     bool copy_import_libs = false;
     bool full_path_executables = false;
+    bool rc_enabled = true;
+    bool short_local_names = false;
 
     String install_prefix;
 

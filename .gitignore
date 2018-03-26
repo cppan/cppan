@@ -5,6 +5,7 @@
 cppan
 .cppan*
 .vs*
+.*
 
 *.kdev*
 
@@ -19,3 +20,5 @@ cppan
 
 # bison generated
 *.output
+
+CMakeSettings.json

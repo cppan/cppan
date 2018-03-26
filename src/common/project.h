@@ -23,7 +23,7 @@
 #include "source.h"
 #include "yaml.h"
 
-#include <primitives/optional.h>
+#include <primitives/stdcompat.h>
 
 #include <unordered_map>
 
@@ -232,11 +232,19 @@ public:
     bool cxx_extensions = false;
 
     bool import_from_bazel = false;
+    String bazel_target_function;
+    String bazel_target_name;
+
     bool prefer_binaries = false;
     bool export_all_symbols = false;
+    bool export_if_static = false;
     bool build_dependencies_with_same_config = false;
+    bool rc_enabled = true;
+    bool disabled = false;
 
     StringSet api_name;
+    String output_name; // file name
+    String condition; // when this target is active
 
     // files to include into archive
     // also is used for enumerating sources (mutable for this)
@@ -266,6 +274,9 @@ public:
     // allow relative project paths
     bool allow_relative_project_names = false;
 
+    // package processed is not in storage on client system
+    bool is_local = true;
+
     // private data
 private:
     // no files to compile
@@ -289,6 +300,9 @@ public:
     yaml save() const;
     void save_dependencies(yaml &root) const;
 
+    String print_cpp();
+    String print_cpp2();
+
     // own data, not from config
 public:
     // flag shows that files were loaded from 'files' node
@@ -308,3 +322,5 @@ private:
 using Projects = std::map<String, Project>;
 
 void load_source_and_version(const yaml &root, Source &source, Version &version);
+
+inline const auto bazel_filenames = { "BUILD", "BUILD.bazel" };

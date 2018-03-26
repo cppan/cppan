@@ -6,14 +6,16 @@
 # cppan
 ########################################
 
-file(GLOB cppan_src "*")
+file(GLOB cppan_src "*.cpp" "*.h" "*.rc")
 
 add_executable(client ${cppan_src})
 target_link_libraries(client common
     pvt.cppan.demo.boost.program_options
     pvt.cppan.demo.yhirose.cpp_linenoise
 )
-#target_link_libraries(client -static-libstdc++ -static-libgcc)
+if (UNIX AND NOT APPLE)
+target_link_libraries(client -static-libstdc++ -static-libgcc)
+endif()
 
 if (CPPAN_TEST)
 add_custom_command(TARGET client POST_BUILD

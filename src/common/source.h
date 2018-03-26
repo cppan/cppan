@@ -19,8 +19,9 @@
 #include "cppan_string.h"
 #include "filesystem.h"
 #include "property_tree.h"
+#include "version.h"
 
-#include <boost/variant.hpp>
+#include <variant>
 #include <regex>
 
 #include <set>
@@ -42,6 +43,11 @@ struct SourceUrl
     bool save(ptree &p) const;
     void save(yaml &root, const String &name) const;
     String print() const;
+    void applyVersion(const Version &v);
+
+protected:
+    template <typename ... Args>
+    bool checkValid(const String &name, String *error, Args && ... args) const;
 };
 
 struct Git : SourceUrl
@@ -59,6 +65,8 @@ struct Git : SourceUrl
     bool save(ptree &p) const;
     void save(yaml &root, const String &name = Git::getString()) const;
     String print() const;
+    String printCpp() const;
+    void applyVersion(const Version &v);
 
     bool operator==(const Git &rhs) const
     {
@@ -81,6 +89,7 @@ struct Hg : Git
     bool save(ptree &p) const;
     void save(yaml &root, const String &name = Hg::getString()) const;
     String print() const;
+    String printCpp() const;
 
     bool operator==(const Hg &rhs) const
     {
@@ -104,6 +113,7 @@ struct Bzr : SourceUrl
     bool save(ptree &p) const;
     void save(yaml &root, const String &name = Bzr::getString()) const;
     String print() const;
+    String printCpp() const;
 
     bool operator==(const Bzr &rhs) const
     {
@@ -119,7 +129,6 @@ struct Fossil : Git
     Fossil(const yaml &root, const String &name = Fossil::getString());
 
     void download() const;
-    bool isValid(String *error = nullptr) const;
     using Git::save;
     void save(yaml &root, const String &name = Fossil::getString()) const;
 
@@ -148,6 +157,7 @@ struct Cvs : SourceUrl
     bool save(ptree &p) const;
     void save(yaml &root, const String &name = Cvs::getString()) const;
     String print() const;
+    String printCpp() const;
 
     bool operator==(const Cvs &rhs) const
     {
@@ -165,6 +175,8 @@ struct RemoteFile : SourceUrl
     void download() const;
     using SourceUrl::save;
     void save(yaml &root, const String &name = RemoteFile::getString()) const;
+    String printCpp() const;
+    void applyVersion(const Version &v);
 
     bool operator==(const RemoteFile &rhs) const
     {
@@ -188,6 +200,8 @@ struct RemoteFiles
     bool save(ptree &p) const;
     void save(yaml &root, const String &name = RemoteFiles::getString()) const;
     String print() const;
+    String printCpp() const;
+    void applyVersion(const Version &v);
 
     bool operator==(const RemoteFiles &rhs) const
     {
@@ -211,7 +225,7 @@ struct RemoteFiles
 #define DELIM_COMMA ,
 #define DELIM_SEMICOLON ;
 #define SOURCE_TYPES_EMPTY(x) x
-using Source = boost::variant<SOURCE_TYPES(SOURCE_TYPES_EMPTY, DELIM_COMMA)>;
+using Source = std::variant<SOURCE_TYPES(SOURCE_TYPES_EMPTY, DELIM_COMMA)>;
 #undef SOURCE_TYPES_EMPTY
 
 void download(const Source &source, int64_t max_file_size = 0);
@@ -220,5 +234,7 @@ Source load_source(const ptree &p);
 void save_source(yaml &root, const Source &source);
 void save_source(ptree &p, const Source &source);
 String print_source(const Source &source);
+String print_source_cpp(const Source &source);
+void applyVersionToUrl(Source &source, const Version &v);
 
 bool isValidSourceUrl(const Source &source);

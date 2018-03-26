@@ -16,9 +16,15 @@
 
 #include "bazel.h"
 
-#include <algorithm>
-
 #include "driver.h"
+#include "../common/yaml.h"
+
+#include <boost/algorithm/string.hpp>
+#include <primitives/filesystem.h>
+#include <pystring.h>
+
+#include <algorithm>
+#include <regex>
 
 namespace {
 
@@ -41,6 +47,7 @@ std::string prepare_project_name(const std::string &s)
 {
     std::string t = s;
     std::replace(t.begin(), t.end(), '-', '_');
+    std::replace(t.begin(), t.end(), '+', 'p');
     return t;
 }
 
@@ -75,28 +82,44 @@ void File::trimQuotes()
         f.trimQuotes();
 }
 
-Values File::getFiles(const Name &name)
+Values File::getFiles(const Name &name, const std::string &bazel_target_function)
 {
     Values values;
     for (auto &f : functions)
     {
-        if (!(f.name == "cc_library" || f.name == "cc_binary"))
+        if (!(
+            pystring::endswith(f.name, "cc_library") ||
+            pystring::endswith(f.name, "cc_binary") ||
+            pystring::endswith(f.name, bazel_target_function)
+            ))
             continue;
 
         auto i = std::find_if(f.parameters.begin(), f.parameters.end(), [](const auto &p)
         {
             return "name" == p.name;
         });
-        if (i == f.parameters.end() || i->values.empty() || prepare_project_name(*i->values.begin()) != name)
+        if (i == f.parameters.end() || i->values.empty() ||
+            (prepare_project_name(*i->values.begin()) != name && *i->values.begin() != name))
             continue;
 
-        i = std::find_if(f.parameters.begin(), f.parameters.end(), [](const auto &p)
+        for (auto &n : { "hdrs", "public_hdrs" })
         {
-            return "hdrs" == p.name;
-        });
-        if (i != f.parameters.end())
-        {
-            values.insert(i->values.begin(), i->values.end());
+            i = std::find_if(f.parameters.begin(), f.parameters.end(), [&n](const auto &p)
+            {
+                return p.name == n;
+            });
+            if (i != f.parameters.end())
+            {
+                // check if we has a variable
+                for (auto &v : i->values)
+                {
+                    auto p = parameters.find(v);
+                    if (p != parameters.end())
+                        values.insert(p->second.values.begin(), p->second.values.end());
+                    else
+                        values.insert(i->values.begin(), i->values.end());
+                }
+            }
         }
 
         i = std::find_if(f.parameters.begin(), f.parameters.end(), [](const auto &p)
@@ -105,7 +128,15 @@ Values File::getFiles(const Name &name)
         });
         if (i != f.parameters.end())
         {
-            values.insert(i->values.begin(), i->values.end());
+            // check if we has a variable
+            for (auto &v : i->values)
+            {
+                auto p = parameters.find(v);
+                if (p != parameters.end())
+                    values.insert(p->second.values.begin(), p->second.values.end());
+                else
+                    values.insert(i->values.begin(), i->values.end());
+            }
         }
     }
     return values;
@@ -120,3 +151,72 @@ File parse(const std::string &s)
 }
 
 } // namespace bazel
+
+void process_bazel(const path &p, const std::string &libname = "cc_library", const std::string &binname = "cc_binary")
+{
+    auto prepare_dep_name = [](auto s)
+    {
+        //if (s.find("//") == 0)
+            //return std::string();
+        prepare_project_name(s);
+        boost::replace_all(s, ":", "");
+        boost::replace_all(s, "+", "p");
+        return s;
+    };
+
+    auto b = read_file(p);
+    auto file = bazel::parse(b);
+    yaml root;
+    auto projects = root["projects"];
+    for (auto &f : file.functions)
+    {
+        enum
+        {
+            unk,
+            lib,
+            bin,
+        };
+        int type = unk;
+        if (pystring::endswith(f.name, libname))
+            type = lib;
+        else if (pystring::endswith(f.name, binname))
+            type = bin;
+        else
+            continue;
+
+        auto i = std::find_if(f.parameters.begin(), f.parameters.end(), [](const auto &p)
+        {
+            return "name" == p.name;
+        });
+        if (i == f.parameters.end() || i->values.empty())
+            continue;
+
+        auto pname = prepare_project_name(*i->values.begin());
+        auto project = projects[pname];
+        if (type == lib)
+            project["type"] = "lib";
+
+        project["import_from_bazel"] = true;
+        project["bazel_target_name"] = *i->values.begin();
+        project["bazel_target_function"] = type == lib ? libname : binname;
+
+        for (auto &n : { "deps", "external_deps" })
+        {
+            i = std::find_if(f.parameters.begin(), f.parameters.end(), [&n](const auto &p)
+            {
+                return n == p.name;
+            });
+            if (!(i == f.parameters.end() || i->values.empty()))
+            {
+                for (auto &d : i->values)
+                {
+                    auto d2 = prepare_dep_name(d);
+                    if (!d2.empty())
+                        project["dependencies"].push_back(d2);
+                }
+            }
+        }
+    }
+
+    std::cout << dump_yaml_config(root);
+}

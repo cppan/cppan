@@ -103,8 +103,10 @@ endfunction(add_src_dir)
 ########################################
 
 function(remove_src var)
-    list(REMOVE_ITEM src ${SDIR}/${var})
-    set(src ${src} PARENT_SCOPE)
+    if (src)
+        list(REMOVE_ITEM src ${SDIR}/${var})
+        set(src ${src} PARENT_SCOPE)
+    endif()
 endfunction(remove_src)
 
 ########################################
@@ -112,7 +114,7 @@ endfunction(remove_src)
 ########################################
 
 function(remove_src_win32 var)
-    if (WIN32)
+    if (WIN32 AND src)
         list(REMOVE_ITEM src ${SDIR}/${var})
         set(src ${src} PARENT_SCOPE)
     endif()
@@ -123,7 +125,7 @@ endfunction(remove_src_win32)
 ########################################
 
 function(remove_src_unix var)
-    if (UNIX)
+    if (UNIX AND src)
         list(REMOVE_ITEM src ${SDIR}/${var})
         set(src ${src} PARENT_SCOPE)
     endif()
@@ -135,10 +137,10 @@ endfunction(remove_src_unix)
 
 function(remove_src_dir var)
     file(GLOB_RECURSE rm ${SDIR}/${var})
-    if (rm)
+    if (rm AND src)
         list(REMOVE_ITEM src ${rm})
+        set(src ${src} PARENT_SCOPE)
     endif()
-    set(src ${src} PARENT_SCOPE)
 endfunction(remove_src_dir)
 
 ########################################
@@ -192,7 +194,11 @@ endfunction(file_write_safe)
 ########################################
 
 function(find_flag in_flags f out)
-    if (NOT ${${out}} STREQUAL "")
+    if (NOT "${${out}}" STREQUAL "")
+        return()
+    endif()
+    if ("${in_flags}" STREQUAL "")
+        set(${out} 0 PARENT_SCOPE)
         return()
     endif()
     set(flags ${in_flags})
@@ -234,14 +240,14 @@ endfunction(get_config_hash)
 function(get_configuration_unhashed out)
     set(mt_flag)
     if (MSVC)
-        find_flag(${CMAKE_C_FLAGS_RELEASE}              /MT       C_MTR        )
-        find_flag(${CMAKE_C_FLAGS_RELWITHDEBINFO}       /MT       C_MTRWDI     )
-        find_flag(${CMAKE_C_FLAGS_MINSIZEREL}           /MT       C_MTMSR      )
-        find_flag(${CMAKE_C_FLAGS_DEBUG}                /MTd      C_MTD        )
-        find_flag(${CMAKE_CXX_FLAGS_RELEASE}            /MT     CXX_MTR        )
-        find_flag(${CMAKE_CXX_FLAGS_RELWITHDEBINFO}     /MT     CXX_MTRWDI     )
-        find_flag(${CMAKE_CXX_FLAGS_MINSIZEREL}         /MT     CXX_MTMSR      )
-        find_flag(${CMAKE_CXX_FLAGS_DEBUG}              /MTd    CXX_MTD        )
+        find_flag("${CMAKE_C_FLAGS_RELEASE}"              /MT       C_MTR        )
+        find_flag("${CMAKE_C_FLAGS_RELWITHDEBINFO}"       /MT       C_MTRWDI     )
+        find_flag("${CMAKE_C_FLAGS_MINSIZEREL}"           /MT       C_MTMSR      )
+        find_flag("${CMAKE_C_FLAGS_DEBUG}"                /MTd      C_MTD        )
+        find_flag("${CMAKE_CXX_FLAGS_RELEASE}"            /MT     CXX_MTR        )
+        find_flag("${CMAKE_CXX_FLAGS_RELWITHDEBINFO}"     /MT     CXX_MTRWDI     )
+        find_flag("${CMAKE_CXX_FLAGS_MINSIZEREL}"         /MT     CXX_MTMSR      )
+        find_flag("${CMAKE_CXX_FLAGS_DEBUG}"              /MTd    CXX_MTD        )
 
         if (  C_MTR OR   C_MTRWDI OR   C_MTMSR OR   C_MTD OR
             CXX_MTR OR CXX_MTRWDI OR CXX_MTMSR OR CXX_MTD)
@@ -252,18 +258,24 @@ function(get_configuration_unhashed out)
         endif()
     endif()
 
-    prepare_config_part(system ${CMAKE_SYSTEM_NAME})
-    prepare_config_part(processor ${CMAKE_SYSTEM_PROCESSOR})
-    prepare_config_part(compiler ${CMAKE_CXX_COMPILER_ID})
+    prepare_config_part(system "${CMAKE_SYSTEM_NAME}")
+    prepare_config_part(processor "${CMAKE_SYSTEM_PROCESSOR}")
+    prepare_config_part(compiler "${CMAKE_CXX_COMPILER_ID}")
     set(config ${system}${CPPAN_CONFIG_PART_DELIMETER}${processor}${CPPAN_CONFIG_PART_DELIMETER}${compiler})
 
-    string(REGEX MATCH "[0-9]+\\.[0-9]" version "${CMAKE_CXX_COMPILER_VERSION}")
+    string(REGEX MATCH "[0-9]+\\.[0-9]+" version "${CMAKE_CXX_COMPILER_VERSION}")
     if (CMAKE_SIZEOF_VOID_P)
         math(EXPR bits "${CMAKE_SIZEOF_VOID_P} * 8")
     elseif(SIZEOF_VOID_P)
         math(EXPR bits "${SIZEOF_VOID_P} * 8")
     else()
         set(bits unk)
+    endif()
+
+    set(sysver)
+    if (CMAKE_SYSTEM_VERSION AND (WIN32 OR APPLE)) # apple too?
+        prepare_config_part(sysver "${CMAKE_SYSTEM_VERSION}")
+        set(sysver ${CPPAN_CONFIG_PART_DELIMETER}${sysver})
     endif()
 
     set(dll)
@@ -273,19 +285,34 @@ function(get_configuration_unhashed out)
 
     set(toolset)
     if (CMAKE_GENERATOR_TOOLSET)
-        prepare_config_part(toolset ${CMAKE_GENERATOR_TOOLSET})
+        prepare_config_part(toolset "${CMAKE_GENERATOR_TOOLSET}")
         set(toolset ${CPPAN_CONFIG_PART_DELIMETER}${toolset})
     endif()
+    if (VISUAL_STUDIO_ACCELERATE_CLANG AND CPPAN_GET_CHILDREN_VARIABLES)
+        set(toolset)
+    endif()
 
+    # msvc arch
+    # it can be same as ${bits}
+    # but still it is set explicitly for some rare cases
     set(msvc_arch)
-    if (MSVC AND (MSVC_C_ARCHITECTURE_ID OR MSVC_CXX_ARCHITECTURE_ID))
-        prepare_config_part(msvc_arch ${MSVC_C_ARCHITECTURE_ID})
-        set(msvc_arch ${CPPAN_CONFIG_PART_DELIMETER}${msvc_arch})
+    if (MSVC)
+        set(msvc_c_arch)
+        if (MSVC_C_ARCHITECTURE_ID)
+            prepare_config_part(msvc_c_arch "${MSVC_C_ARCHITECTURE_ID}")
+            set(msvc_c_arch ${CPPAN_CONFIG_PART_DELIMETER}${msvc_c_arch})
+        endif()
 
-        # can they differ?
-        if (MSVC_CXX_ARCHITECTURE_ID AND NOT "${MSVC_C_ARCHITECTURE_ID}" STREQUAL "${MSVC_CXX_ARCHITECTURE_ID}")
-            prepare_config_part(msvc_arch2 ${MSVC_CXX_ARCHITECTURE_ID})
-            set(msvc_arch ${msvc_arch}${CPPAN_CONFIG_PART_DELIMETER}${msvc_arch2})
+        set(msvc_cxx_arch)
+        if (MSVC_CXX_ARCHITECTURE_ID)
+            prepare_config_part(msvc_cxx_arch "${MSVC_CXX_ARCHITECTURE_ID}")
+            set(msvc_cxx_arch ${CPPAN_CONFIG_PART_DELIMETER}${msvc_cxx_arch})
+        endif()
+
+        if ("${msvc_c_arch}" STREQUAL "${msvc_cxx_arch}")
+            set(msvc_arch ${msvc_c_arch})
+        else()
+            set(msvc_arch ${msvc_c_arch}${msvc_cxx_arch})
         endif()
     endif()
 
@@ -293,11 +320,16 @@ function(get_configuration_unhashed out)
     # for non VS/XCODE builds
     set(configuration)
     if (NOT (XCODE OR VISUAL_STUDIO))
+        if (CMAKE_BUILD_TYPE)# AND NOT CPPAN_CONFIG_NO_BUILD_TYPE)
+            set(configuration ${CPPAN_CONFIG_PART_DELIMETER}${CMAKE_BUILD_TYPE})
+        endif()
+    endif()
+    if (VISUAL_STUDIO_ACCELERATE_CLANG AND CPPAN_GET_CHILDREN_VARIABLES)# AND NOT CPPAN_CONFIG_NO_BUILD_TYPE)
         set(configuration ${CPPAN_CONFIG_PART_DELIMETER}${CMAKE_BUILD_TYPE})
     endif()
 
     set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${version})
-    set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${bits}${msvc_arch}${mt_flag}${dll}${toolset})
+    set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${bits}${msvc_arch}${mt_flag}${dll}${sysver}${toolset})
     set(config ${config}${configuration})
 
     set(${out} ${config} PARENT_SCOPE)
@@ -310,9 +342,14 @@ endfunction(get_configuration_unhashed)
 function(get_configuration_with_generator_unhashed out)
     get_configuration_unhashed(config)
 
-    prepare_config_part(generator ${CMAKE_GENERATOR})
+    prepare_config_part(generator "${CMAKE_GENERATOR}")
     if (NOT "${generator}" STREQUAL "")
-        set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${generator})
+        if (VISUAL_STUDIO_ACCELERATE_CLANG AND CPPAN_GET_CHILDREN_VARIABLES)
+            # fake ninja generator to get correct config for deps building
+            set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}ninja)
+        else()
+            set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${generator})
+        endif()
     endif()
 
     set(${out} ${config} PARENT_SCOPE)
@@ -323,14 +360,19 @@ endfunction(get_configuration_with_generator_unhashed)
 ########################################
 
 function(get_configuration_exe_unhashed out)
-    prepare_config_part(system ${CMAKE_SYSTEM_NAME})
-    prepare_config_part(processor ${CMAKE_HOST_SYSTEM_PROCESSOR})
+    prepare_config_part(system "${CMAKE_SYSTEM_NAME}")
+    prepare_config_part(processor "${CMAKE_HOST_SYSTEM_PROCESSOR}")
     set(config ${system}${CPPAN_CONFIG_PART_DELIMETER}${processor})
 
     # add generator to executables since we're using the same generator as for libraries
-    prepare_config_part(generator ${CMAKE_GENERATOR})
+    prepare_config_part(generator "${CMAKE_GENERATOR}")
     if (NOT "${generator}" STREQUAL "")
-        set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${generator})
+        if (VISUAL_STUDIO_ACCELERATE_CLANG AND CPPAN_GET_CHILDREN_VARIABLES)
+            # fake ninja generator to get correct config for deps building
+            set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}ninja)
+        else()
+            set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${generator})
+        endif()
     endif()
 
     set(${out} ${config} PARENT_SCOPE)
@@ -568,6 +610,11 @@ endfunction(add_check_variable)
 ########################################
 
 function(read_check_variables_file f)
+    #if (NOT EXISTS ${f})
+        #message(STATUS "Check variables file does not exist: ${f}")
+        #return()
+    #endif()
+
     read_variables_file(CPPAN_VARIABLES ${f})
 
     set(CPPAN_VARIABLES_TYPES ${CPPAN_VARIABLES_TYPES} PARENT_SCOPE)
@@ -863,6 +910,11 @@ function(set_src_compiled s)
     if (N EQUAL 0)
         return()
     endif()
+    if (${ARGC} GREATER 1)
+        set_source_files_properties(${src2} PROPERTIES LANGUAGE ${ARGV1})
+    else()
+        set_source_files_properties(${src2} PROPERTIES LANGUAGE CXX)
+    endif()
     set_source_files_properties(${src2} PROPERTIES HEADER_FILE_ONLY False)
     #set(src ${src} ${src2} PARENT_SCOPE)
 endfunction()
@@ -875,6 +927,8 @@ function(moc_cpp_file f)
     get_filename_component(n ${f} NAME_WE)
     qt5_create_moc_command(${SDIR}/${f} ${BDIR}/${n}.moc "" "" ${this} "")
     set(src ${src} ${BDIR}/${n}.moc PARENT_SCOPE)
+    # not all mocs must be compiled
+    #set_source_files_properties(${BDIR}/${n}.moc PROPERTIES LANGUAGE CXX)
 endfunction()
 
 ########################################
