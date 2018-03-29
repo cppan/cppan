@@ -22,6 +22,7 @@
 #include "version.h"
 
 #include <primitives/stdcompat/variant.h>
+
 #include <set>
 
 namespace YAML { class Node; }
