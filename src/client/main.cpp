@@ -31,7 +31,6 @@
 #include <program.h>
 #include <resolver.h>
 #include <settings.h>
-#include <shell_link.h>
 #include <verifier.h>
 
 #include <boost/algorithm/string.hpp>
@@ -40,6 +39,7 @@
 #include <primitives/templates.h>
 #include <primitives/executor.h>
 #include <primitives/minidump.h>
+#include <primitives/win32helpers.h>
 
 #include <iostream>
 #include <thread>
@@ -375,6 +375,16 @@ try
     {
         verify(options["verify"].as<String>());
         LOG_INFO(logger, "Verified...  Ok. Packages are the same.");
+        return 0;
+    }
+
+    if (options()["fetch"].as<bool>())
+    {
+        Config c;
+        c.allow_relative_project_names = true;
+        c.reload(".");
+        download(c.getDefaultProject().source);
+        LOG_INFO(logger, "Fetched...  Ok.");
         return 0;
     }
 

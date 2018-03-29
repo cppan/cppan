@@ -148,6 +148,7 @@ void Settings::load_main(const yaml &root, const SettingsType type)
     YAML_EXTRACT_AUTO(disable_update_checks);
     YAML_EXTRACT_AUTO(max_download_threads);
     YAML_EXTRACT_AUTO(debug_generated_cmake_configs);
+    YAML_EXTRACT_AUTO(install_local_packages);
     YAML_EXTRACT(storage_dir, String);
     YAML_EXTRACT(build_dir, String);
     YAML_EXTRACT(cppan_dir, String);
@@ -190,6 +191,7 @@ void Settings::load_main(const yaml &root, const SettingsType type)
     YAML_EXTRACT_AUTO(copy_import_libs);
     YAML_EXTRACT_AUTO(rc_enabled);
     YAML_EXTRACT_AUTO(short_local_names);
+    additional_build_args = get_sequence<String>(root["additional_build_args"]);
     YAML_EXTRACT_AUTO(full_path_executables);
     YAML_EXTRACT_AUTO(var_check_jobs);
     YAML_EXTRACT_AUTO(install_prefix);
@@ -273,6 +275,7 @@ void Settings::load_build(const yaml &root)
     YAML_EXTRACT_AUTO(copy_import_libs);
     YAML_EXTRACT_AUTO(rc_enabled);
     YAML_EXTRACT_AUTO(short_local_names);
+    additional_build_args = get_sequence<String>(root["additional_build_args"]);
     YAML_EXTRACT_AUTO(full_path_executables);
     YAML_EXTRACT_AUTO(var_check_jobs);
     YAML_EXTRACT_AUTO(install_prefix);

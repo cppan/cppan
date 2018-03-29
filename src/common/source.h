@@ -21,9 +21,7 @@
 #include "property_tree.h"
 #include "version.h"
 
-#include <variant>
-#include <regex>
-
+#include <primitives/stdcompat/variant.h>
 #include <set>
 
 namespace YAML { class Node; }
@@ -44,6 +42,7 @@ struct SourceUrl
     void save(yaml &root, const String &name) const;
     String print() const;
     void applyVersion(const Version &v);
+    void loadVersion(Version &v) {}
 
 protected:
     template <typename ... Args>
@@ -67,6 +66,7 @@ struct Git : SourceUrl
     String print() const;
     String printCpp() const;
     void applyVersion(const Version &v);
+    void loadVersion(Version &v);
 
     bool operator==(const Git &rhs) const
     {
@@ -90,6 +90,7 @@ struct Hg : Git
     void save(yaml &root, const String &name = Hg::getString()) const;
     String print() const;
     String printCpp() const;
+    void loadVersion(Version &v);
 
     bool operator==(const Hg &rhs) const
     {
@@ -114,6 +115,7 @@ struct Bzr : SourceUrl
     void save(yaml &root, const String &name = Bzr::getString()) const;
     String print() const;
     String printCpp() const;
+    void loadVersion(Version &v);
 
     bool operator==(const Bzr &rhs) const
     {
@@ -131,6 +133,7 @@ struct Fossil : Git
     void download() const;
     using Git::save;
     void save(yaml &root, const String &name = Fossil::getString()) const;
+    void loadVersion(Version &v);
 
     bool operator==(const Fossil &rhs) const
     {
@@ -158,6 +161,7 @@ struct Cvs : SourceUrl
     void save(yaml &root, const String &name = Cvs::getString()) const;
     String print() const;
     String printCpp() const;
+    void loadVersion(Version &v);
 
     bool operator==(const Cvs &rhs) const
     {
@@ -202,6 +206,7 @@ struct RemoteFiles
     String print() const;
     String printCpp() const;
     void applyVersion(const Version &v);
+    void loadVersion(Version &v) {}
 
     bool operator==(const RemoteFiles &rhs) const
     {
@@ -225,7 +230,7 @@ struct RemoteFiles
 #define DELIM_COMMA ,
 #define DELIM_SEMICOLON ;
 #define SOURCE_TYPES_EMPTY(x) x
-using Source = std::variant<SOURCE_TYPES(SOURCE_TYPES_EMPTY, DELIM_COMMA)>;
+using Source = variant<SOURCE_TYPES(SOURCE_TYPES_EMPTY, DELIM_COMMA)>;
 #undef SOURCE_TYPES_EMPTY
 
 void download(const Source &source, int64_t max_file_size = 0);

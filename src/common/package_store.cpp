@@ -26,7 +26,6 @@
 #include "project.h"
 #include "resolver.h"
 #include "settings.h"
-#include "shell_link.h"
 #include "sqlite_database.h"
 
 #include <boost/algorithm/string.hpp>
@@ -35,6 +34,7 @@
 #include <primitives/hasher.h>
 #include <primitives/http.h>
 #include <primitives/templates.h>
+#include <primitives/win32helpers.h>
 
 #include <primitives/log.h>
 //DECLARE_STATIC_LOGGER(logger, "package_store");
@@ -297,11 +297,13 @@ const PackageStore::PackageConfig &PackageStore::operator[](const Package &p) co
 
 void PackageStore::write_index() const
 {
+#ifdef _WIN32
     auto create_link = [](const auto &p, const auto &ln)
     {
         if (!fs::exists(ln))
             ::create_link(p, ln, "CPPAN link");
     };
+#endif
 
     auto &sdb = getServiceDatabase();
     for (auto &cc : *this)
@@ -528,7 +530,10 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
         Package pkg;
         pkg.ppath = ppath;
         if (!project.name.empty())
-            pkg.ppath.push_back(project.name);
+        {
+            //pkg.ppath.push_back(project.name);
+            pkg.ppath /= ProjectPath(project.name);
+        }
         pkg.version = Version(LOCAL_VERSION_NAME);
         pkg.flags.set(pfLocalProject);
         pkg.flags.set(pfDirectDependency, direct_dependency);
@@ -545,11 +550,11 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
         auto f = e.push([&c, &p, &cpp_fn, &ppath]()
         {
             auto &project = c.getDefaultProject();
-			auto root_directory = fs::is_regular_file(p) ? p.parent_path() : p;
-			if (project.root_directory.is_absolute())
-				root_directory = project.root_directory;
-			else
-				root_directory /= project.root_directory;
+            auto root_directory = fs::is_regular_file(p) ? p.parent_path() : p;
+            if (project.root_directory.is_absolute())
+                root_directory = project.root_directory;
+            else
+                root_directory /= project.root_directory;
 
             // sources
             if (!cpp_fn.empty() && !project.files_loaded)
@@ -563,7 +568,7 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
             project.findSources(root_directory);
             // maybe remove? let user see cppan.yml in local project
             project.files.erase(current_thread_path() / CPPAN_FILENAME);
-			project.files.erase(CPPAN_FILENAME);
+            project.files.erase(CPPAN_FILENAME);
             // patch if any
             project.patchSources();
 
@@ -572,6 +577,23 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
             // at this time we take project.pkg, not just local variable (pkg)
             project.applyFlags(project.pkg.flags);
             c.setPackage(project.pkg);
+
+            if (Settings::get_local_settings().install_local_packages)
+            {
+                // copy files to project's dir
+                decltype(project.files) files;
+                for (auto &f : project.files)
+                {
+                    auto r = project.pkg.getDirSrc() / f.lexically_relative(root_directory);
+                    create_directories(r.parent_path());
+                    fs::copy_file(f, r, fs::copy_option::overwrite_if_exists);
+                    files.insert(r);
+                }
+                project.files = files;
+
+                // set non local
+                //project.pkg.flags.set(pfLocalProject, false);
+            }
 
             // check if project's deps are relative
             // this means that there's a local dependency

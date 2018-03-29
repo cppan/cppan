@@ -26,13 +26,13 @@
 #include <program.h>
 #include <resolver.h>
 #include <settings.h>
-#include <shell_link.h>
 
 #include <boost/algorithm/string.hpp>
 
 #include <primitives/command.h>
 #include <primitives/date_time.h>
 #include <primitives/executor.h>
+#include <primitives/win32helpers.h>
 
 #ifdef _WIN32
 #include <WinReg.hpp>
@@ -126,6 +126,20 @@ public:
             ctx.emptyLines();
     }
 };
+
+void registerCmakePackage()
+{
+#ifdef _WIN32
+    // if we write into HKLM, we won't be able to access the pkg file in admins folder
+    winreg::RegKey icon(/*is_elevated() ? HKEY_LOCAL_MACHINE : */HKEY_CURRENT_USER, L"Software\\Kitware\\CMake\\Packages\\CPPAN");
+    icon.SetStringValue(L"", directories.get_static_files_dir().wstring().c_str());
+    write_file_if_different(directories.get_static_files_dir() / cppan_cmake_config_filename, cppan_cmake_config);
+#else
+    auto cppan_cmake_dir = get_home_directory() / ".cmake" / "packages";
+    write_file_if_different(cppan_cmake_dir / "CPPAN" / "1", cppan_cmake_dir.string());
+    write_file_if_different(cppan_cmake_dir / cppan_cmake_config_filename, cppan_cmake_config);
+#endif
+}
 
 String cmake_debug_message(const String &s)
 {
@@ -656,8 +670,15 @@ endif()
 #endif
             local.addText("\\\"${CMAKE_COMMAND}\\\" ");
             //local.addText("-DCPPAN_BUILD_LEVEL=${CPPAN_BUILD_LEVEL} ");
-            local.addText("-DTARGET_FILE=$<TARGET_FILE:" + p.target_name + "> ");
-            local.addText("-DCONFIG=$<CONFIG> ");
+            //local.addText("-DTARGET_VAR=" + p.variable_name + " "); // remove!
+            //local.addText("-DTARGET_FILE=$<TARGET_FILE:" + p.target_name + "> ");
+
+            // this also probably must consider CPPAN_BUILD_EXECUTABLES_WITH_SAME_CONFIG
+            if (p.flags[pfExecutable] /* and not CPPAN_BUILD_EXECUTABLES_WITH_SAME_CONFIG */)
+                local.addText("-DCONFIG=Release ");
+            else
+                local.addText("-DCONFIG=$<CONFIG> ");
+
             local.addText("-DBUILD_DIR=" + normalize_path(p.getDirObj()) + "/build/${" + cfg + "} ");
             local.addText("-DEXECUTABLE="s + (p.flags[pfExecutable] ? "1" : "0") + " ");
             if (d.empty())
@@ -683,10 +704,11 @@ endif()
 :cmErrorLevel
 @exit /b %1
 "))");
+        local.else_();
+        local.addLine("set(bat_file_begin \"#!/bin/sh\\n\")");
         local.endif();
 
-        local.increaseIndent("file(GENERATE OUTPUT ${file} CONTENT \"");
-        local.addLine("${bat_file_begin}");
+        local.increaseIndent("file(GENERATE OUTPUT ${file} CONTENT \"${bat_file_begin}");
         for (auto &dp : build_deps)
         {
             auto &p = dp.second;
@@ -791,6 +813,8 @@ void CMakePrinter::print_copy_dependencies(CMakeContext &ctx, const String &targ
     ctx.addLine("set(copy_content)");
     ctx.if_("WIN32");
     ctx.addLine("set(copy_content \"${copy_content} @setlocal\\n\")");
+    ctx.else_();
+    ctx.addLine("set(copy_content \"#!/bin/sh\\n\")");
     ctx.endif();
 
     // we're in helper, set this var to build target
@@ -862,7 +886,7 @@ void CMakePrinter::print_copy_dependencies(CMakeContext &ctx, const String &targ
 #ifdef _WIN32
             s += "set(copy_content \"${copy_content} @\")\n";
 #endif
-            s += "set(copy_content \"${copy_content} \\\"${CMAKE_COMMAND}\\\" -E copy_if_different ";
+            s += "        set(copy_content \"${copy_content} \\\"${CMAKE_COMMAND}\\\" -E copy_if_different ";
             String name;
             if (!prj.output_name.empty())
                 name = prj.output_name;
@@ -924,8 +948,7 @@ void CMakePrinter::print_copy_dependencies(CMakeContext &ctx, const String &targ
     ctx.endif();
 
     ctx.addLine(R"(
-file(GENERATE OUTPUT ${file} CONTENT "
-    ${copy_content}
+file(GENERATE OUTPUT ${file} CONTENT "${copy_content}
 ")
 if (UNIX)
     set(file chmod u+x ${file} COMMAND ${file})
@@ -935,65 +958,72 @@ add_custom_command(TARGET )" + target + R"( POST_BUILD
 )
 )");
 
-    ctx.endif();
-    ctx.addLine();
-
-    // like with build deps
-    // only for ninja at the moment
-    ctx.if_("NINJA");
-    for (auto &dp : copy_deps)
     {
-        auto &p = dp.second;
+        // like with build deps
+        // only for ninja at the moment
+        ctx.if_("NINJA");
+        for (auto &dp : copy_deps)
+        {
+            auto &p = dp.second;
 
-        // local projects are always built inside solution
-        if (p.flags[pfLocalProject])
-            continue;
+            // local projects are always built inside solution
+            if (p.flags[pfLocalProject])
+                continue;
 
-        ScopedDependencyCondition sdc(ctx, p);
-        ctx.addLine("get_target_property(imploc_" + p.variable_name + " " + p.target_name + " IMPORTED_LOCATION_${CMAKE_BUILD_TYPE_UPPER})");
+            ScopedDependencyCondition sdc(ctx, p);
+            ctx.addLine("get_target_property(imploc_" + p.variable_name + " " + p.target_name + " IMPORTED_LOCATION_${CMAKE_BUILD_TYPE_UPPER})");
+            
+            // FIXME: on apple some targets fail to find above var
+            //ctx.if_("\"${imploc_" + p.variable_name + "}\" STREQUAL \"imploc_" + p.variable_name + "-NOTFOUND\"");
+            //ctx.addLine("set(imploc_" + p.variable_name + ")");
+            //ctx.endif();
+        }
+        ctx.emptyLines();
+
+        bool deps = false;
+        String build_deps_tgt = "${this}";
+        if (d.empty() && target.find("-c") != target.npos)
+        {
+            build_deps_tgt += "-d"; // deps
+            deps = true;
+        }
+        else
+            build_deps_tgt += "-c-d";
+
+        // do not use add_custom_command as it doesn't work
+        // add custom target and add a dependency below
+        // second way is to use add custom target + add custom command (POST?(PRE)_BUILD)
+        ctx.addLine("set(bp)");
+        //for (auto &dp : build_deps_all)
+        for (auto &dp : copy_deps)
+        {
+            auto &p = dp.second;
+
+            // local projects are always built inside solution
+            if (p.flags[pfLocalProject])
+                continue;
+
+            ScopedDependencyCondition sdc(ctx, p, false);
+            ctx.addLine("set(bp ${bp} ${imploc_" + p.variable_name + "})");
+        }
+        ctx.emptyLines();
+
+        ctx.increaseIndent("add_custom_target(" + build_deps_tgt);
+        ctx.addLine("COMMAND ${file}");
+        ctx.increaseIndent("BYPRODUCTS ${bp}");
+        ctx.decreaseIndent(")", 2);
+        ctx.addLine("add_dependencies(${this} " + build_deps_tgt + ")");
+        print_solution_folder(ctx, build_deps_tgt, deps ? service_folder : service_deps_folder);
+        //this causes long paths issue
+        //if (deps)
+        //    set_target_properties(ctx, build_deps_tgt, "PROJECT_LABEL", "dependencies");
+        //else
+        //    set_target_properties(ctx, build_deps_tgt, "PROJECT_LABEL", (d.flags[pfLocalProject] ? d.ppath.back() : d.target_name) + "-build-dependencies");
+        ctx.endif();
+        ctx.addLine();
     }
-    ctx.emptyLines();
 
-    bool deps = false;
-    String build_deps_tgt = "${this}";
-    if (d.empty() && target.find("-c") != target.npos)
-    {
-        build_deps_tgt += "-d"; // deps
-        deps = true;
-    }
-    else
-        build_deps_tgt += "-c-d";
-
-    // do not use add_custom_command as it doesn't work
-    // add custom target and add a dependency below
-    // second way is to use add custom target + add custom command (POST?(PRE)_BUILD)
-    ctx.addLine("set(bp)");
-    //for (auto &dp : build_deps_all)
-    for (auto &dp : copy_deps)
-    {
-        auto &p = dp.second;
-
-        // local projects are always built inside solution
-        if (p.flags[pfLocalProject])
-            continue;
-
-        ScopedDependencyCondition sdc(ctx, p, false);
-        ctx.addLine("set(bp ${bp} ${imploc_" + p.variable_name + "})");
-    }
-    ctx.emptyLines();
-
-    ctx.increaseIndent("add_custom_target(" + build_deps_tgt);
-    ctx.addLine("COMMAND ${file}");
-    ctx.increaseIndent("BYPRODUCTS ${bp}");
-    ctx.decreaseIndent(")", 2);
-    ctx.addLine("add_dependencies(${this} " + build_deps_tgt + ")");
-    print_solution_folder(ctx, build_deps_tgt, deps ? service_folder : service_deps_folder);
-    //this causes long paths issue
-    //if (deps)
-    //    set_target_properties(ctx, build_deps_tgt, "PROJECT_LABEL", "dependencies");
-    //else
-    //    set_target_properties(ctx, build_deps_tgt, "PROJECT_LABEL", (d.flags[pfLocalProject] ? d.ppath.back() : d.target_name) + "-build-dependencies");
-    ctx.endif();
+    ctx.endif(); // CPPAN_USE_CACHE
     ctx.addLine();
 }
 
@@ -1378,15 +1408,6 @@ void CMakePrinter::print_meta() const
         "set(CPPAN_CONFIG_PART_DELIMETER -)\n"
         "\n"
         + cmake_functions);
-
-    // register cmake package
-#ifdef _WIN32
-    winreg::RegKey icon(HKEY_CURRENT_USER, L"Software\\Kitware\\CMake\\Packages\\CPPAN");
-    icon.SetStringValue(L"", directories.get_static_files_dir().wstring().c_str());
-    access_table->write_if_older(directories.get_static_files_dir() / cppan_cmake_config_filename, cppan_cmake_config);
-#else
-    access_table->write_if_older(get_home_directory() / ".cmake" / "packages" / cppan_cmake_config_filename, cppan_cmake_config);
-#endif
 
     access_table->write_if_older(directories.get_static_files_dir() / cmake_header_filename, cmake_header);
     access_table->write_if_older(directories.get_static_files_dir() / cmake_export_import_filename, cmake_export_import_file);
@@ -2027,15 +2048,10 @@ endif()
     {
         if (!d.flags[pfLocalProject])
             print_solution_folder(ctx, "${this}", path(packages_folder) / d.ppath.toString() / d.version.toString());
-        else if (d.ppath.back().find('.') != -1)
+        else if (d.ppath.size() > 4)
         {
-            auto f = d.ppath.back();
-            auto p = f.rfind('.');
-            auto l = f.substr(p + 1);
-            f = f.substr(0, p);
-            std::replace(f.begin(), f.end(), '.', '/');
-            print_solution_folder(ctx, "${this}", f);
-            set_target_properties(ctx, "PROJECT_LABEL", l);
+            print_solution_folder(ctx, "${this}", d.ppath.slice(3, d.ppath.size() - 1).toString("/"));
+            set_target_properties(ctx, "PROJECT_LABEL", d.ppath.back());
         }
         ctx.emptyLines();
     }
@@ -2301,6 +2317,31 @@ else())");
     config_section_title(ctx, "definitions");
     p.checks.write_definitions(ctx, d, p.checks_prefixes);
 
+    // target info file, before deps
+    config_section_title(ctx, "target information");
+    if (!d.flags[pfHeaderOnly])
+    {
+        ctx.emptyLines();
+        //String var = "CPPAN_CREATE_TARGET_INFO_ONCE_" + d.variable_name;
+        //ctx.if_("NOT " + var);
+        //ctx.addLine("set_once_var(" + var + ")");
+        //ctx.addLine("message(STATUS \"3 - ${" + var + "}\")");
+        //ctx.increaseIndent("file(GENERATE OUTPUT ${BDIR}/cppan_target_info_$<CONFIG>.cmake CONTENT \"");
+        //ctx.addLine("set(TARGET_FILE $<TARGET_FILE:${this}> PARENT_SCOPE)");
+        //ctx.decreaseIndent("\")");
+        ctx.increaseIndent("add_custom_command(TARGET ${this} PRE_BUILD");
+        ctx.addLine("COMMAND ${CMAKE_COMMAND} -E make_directory " + normalize_path(d.getDirObj()) + "/build/${config_dir}");
+        auto q = ""s;
+#ifndef _WIN32
+        q = "'"s;
+#endif
+        //                                                                 make cmake happy
+        //                                                                       v v
+        ctx.addLine("COMMAND echo " + q + "set(TARGET_FILE $<TARGET_FILE:${this}> ) " + q + " > " + normalize_path(d.getDirObj()) + "/build/${config_dir}/cppan_target_info_$<CONFIG>.cmake");
+        ctx.decreaseIndent(")");
+        //ctx.endif();
+    }
+
     // build deps
     print_build_dependencies(ctx, "${this}");
 
@@ -2446,6 +2487,8 @@ void CMakePrinter::print_obj_config_file(const path &fn) const
         ctx.addLine();
         config_section_title(ctx, "macros & functions");
         ctx.addLine("include(" + normalize_path(directories.get_static_files_dir() / cmake_functions_filename) + ")");
+        ctx.addLine();
+        ctx.addLine("clear_once_variables()");
         ctx.addLine();
         //if (!d.flags[pfLocalProject])
         {
@@ -2749,6 +2792,8 @@ void CMakePrinter::print_meta_config_file(const path &fn) const
     print_sdir_bdir(ctx, d);
 
     config_section_title(ctx, "variables");
+    ctx.addLine("clear_once_variables()");
+    ctx.addLine();
     ctx.addLine("set(CPPAN_BUILD 1 CACHE STRING \"CPPAN is turned on\")");
     ctx.addLine();
     print_storage_dirs(ctx);
@@ -2869,6 +2914,29 @@ add_dependencies()" + old_cppan_target + R"( run-cppan)
                 ScopedDependencyCondition sdc(ctx, dep.second);
                 ctx.addLine("set_target_properties(" + dep.second.target_name_hash + " PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CPPAN_BUILD_OUTPUT_DIR})");
             }
+        }
+
+        // install deps
+        config_section_title(ctx, "install");
+        Packages copy_deps;
+        gather_copy_deps(rd[d].dependencies, copy_deps);
+        for (auto &dp : copy_deps)
+        {
+            auto &p = dp.second;
+
+            if (p.flags[pfExecutable])
+                continue;
+
+            ScopedDependencyCondition sdc(ctx, p);
+
+            ctx.addLine("get_target_property(type " + p.target_name + " TYPE)");
+            ctx.if_("\"${type}\" STREQUAL STATIC_LIBRARY");
+            ctx.addLine("install(FILES $<TARGET_FILE:" + p.target_name + "> DESTINATION lib)");
+            ctx.else_();
+            ctx.addLine("install(FILES $<TARGET_FILE:" + p.target_name + "> DESTINATION bin)");
+            ctx.addLine("install(FILES $<TARGET_LINKER_FILE:" + p.target_name + "> DESTINATION lib)");
+            ctx.endif();
+            ctx.emptyLines();
         }
     }
 
@@ -2998,8 +3066,15 @@ endif()
         ctx.addLine("set(vars_file \"${vars_dir}/${config}.cmake\")");
         // helper will show match between config with gen and just config
         ctx.addLine("set(vars_file_helper \"${vars_dir}//${config}.${config_dir}.cmake\")");
-        if (!d.flags[pfLocalProject])
+        // conditions actually are needed anymore with protection of once vars
+        if (!d.flags[pfLocalProject] || Settings::get_local_settings().install_local_packages)
+        {
+            ctx.if_("NOT CPPAN_READ_CHECK_VARS_FILE_ONCE");
+            //ctx.addLine("message(STATUS \"reading vars from ${vars_file}\")");
+            ctx.addLine("set_once_var(CPPAN_READ_CHECK_VARS_FILE_ONCE)");
             ctx.addLine("read_check_variables_file(${vars_file})");
+            ctx.endif();
+        }
         ctx.addLine();
 
         ctx.if_("NOT DEFINED WORDS_BIGENDIAN");
@@ -3056,11 +3131,15 @@ endif()
         p.checks.write_checks(ctx, p.checks_prefixes);
 
         // write vars file
-        if (!d.flags[pfLocalProject])
+        // conditions actually are needed anymore with protection of once vars
+        if (!d.flags[pfLocalProject] || Settings::get_local_settings().install_local_packages)
         {
             ctx.if_("CPPAN_NEW_VARIABLE_ADDED");
+            //ctx.addLine("message(STATUS \"writing vars to ${vars_file}\")");
             ctx.addLine("write_check_variables_file(${vars_file})");
             ctx.addLine("file(WRITE ${vars_file_helper} \"\")");
+            ctx.addLine("set(CPPAN_NEW_VARIABLE_ADDED 0)");
+            //ctx.addLine("message(STATUS \"end of writing vars to ${vars_file}\")");
             ctx.endif();
         }
 

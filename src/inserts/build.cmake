@@ -20,6 +20,13 @@ if (EXISTS ${fn1})
     endif()
 endif()
 
+set(TARGET_INFO_FILE ${BUILD_DIR}/cppan_target_info_${CONFIG}.cmake)
+
+set(TARGET_FILE)
+if (EXISTS ${TARGET_INFO_FILE})
+    include(${TARGET_INFO_FILE})
+endif()
+
 if (NOT REBUILD AND EXISTS ${TARGET_FILE})
     return()
 endif()
