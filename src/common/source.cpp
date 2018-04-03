@@ -1028,3 +1028,116 @@ void applyVersionToUrl(Source &source, const Version &v)
 {
     visit([&v](auto &s) { s.applyVersion(v); }, source);
 }
+
+Svn::Svn(const yaml &root, const String &name)
+	: Git(root, name)
+{
+	YAML_EXTRACT_AUTO(revision);
+}
+
+void Svn::download() const
+{
+	downloadRepository([this]()
+	{
+		Command::execute({ "svn", "checkout", url});
+
+		String branchPath = url.substr(url.find_last_of("/") + 1);
+		ScopedCurrentPath scp(current_thread_path() / branchPath);
+	});
+}
+
+bool Svn::isValid(String *error) const
+{
+	return checkValid(getString(), error, tag, branch, commit, revision);
+}
+
+bool Svn::load(const ptree &p)
+{
+	if (!Git::load(p))
+		return false;
+	PTREE_GET_INT(revision);
+	return true;
+}
+
+bool Svn::save(ptree &p) const
+{
+	if (!Git::save(p))
+		return false;
+	PTREE_ADD_NOT_MINUS_ONE(revision);
+	return true;
+}
+
+void Svn::save(yaml &root, const String &name) const
+{
+	Git::save(root, name);
+	YAML_SET_NOT_MINUS_ONE(revision);
+}
+
+String Svn::print() const
+{
+	auto r = Git::print();
+	if (r.empty())
+		return r;
+	STRING_PRINT_NOT_MINUS_ONE(revision);
+	return r;
+}
+
+String Svn::printCpp() const
+{
+	return String();
+}
+
+void Svn::loadVersion(Version &version)
+{
+	auto ver = !version.isValid() ? version.toString() : ""s;
+
+	if (ver.empty())
+	{
+		if (branch.empty() && tag.empty() && revision == -1)
+		{
+			ver = "default";
+			version = Version(ver);
+		}
+		else if (!branch.empty())
+		{
+			ver = branch;
+			try
+			{
+				version = Version(ver);
+			}
+			catch (std::exception &)
+			{
+			}
+		}
+		else if (!tag.empty())
+		{
+			ver = tag;
+			try
+			{
+				version = Version(ver);
+			}
+			catch (std::exception &)
+			{
+			}
+		}
+		else if (revision != -1)
+		{
+			ver = "revision: " + std::to_string(revision);
+			try
+			{
+				version = Version(ver);
+			}
+			catch (std::exception &)
+			{
+			}
+		}
+	}
+
+	if (version.isValid() && branch.empty() && tag.empty() && commit.empty() && revision == -1)
+	{
+		if (version.isBranch())
+			branch = version.toString();
+		else
+			tag = version.toString();
+	}
+}
