@@ -1031,132 +1031,141 @@ void applyVersionToUrl(Source &source, const Version &v)
 
 void Svn::download() const
 {
-  downloadRepository([this]()
-  {
-    Command::execute({ "svn", "checkout", url });
+    downloadRepository([this]()
+    {
+        Command::execute({ "svn", "checkout", url });
 
-    String branchPath = url.substr(url.find_last_of("/") + 1);
-    ScopedCurrentPath scp(current_thread_path() / branchPath);
-  });
+        String branchPath = url.substr(url.find_last_of("/") + 1);
+        ScopedCurrentPath scp(current_thread_path() / branchPath);
+
+        if (!tag.empty())
+            Command::execute({ "svn", "sw",  branchPath }); //tag
+        else if (!branch.empty())
+            Command::execute({ "cvs", "sw",  branchPath }); //branch
+        else if (revision != -1) 
+            Command::execute({ "svn", "up", "-r" + revision });
+    });
 }
 
 Svn::Svn(const yaml &root, const String &name)
-  : SourceUrl(root, name)
+    : SourceUrl(root, name)
 {
-  YAML_EXTRACT_AUTO(tag);
-  YAML_EXTRACT_AUTO(branch);
-  YAML_EXTRACT_AUTO(commit);
+    YAML_EXTRACT_AUTO(tag);
+    YAML_EXTRACT_AUTO(branch);
+    YAML_EXTRACT_AUTO(revision);
 }
 
 
 bool Svn::isValid(String *error) const
 {
-  return checkValid(getString(), error, tag, branch, commit);
+    return checkValid(getString(), error, tag, branch, revision);
 }
 
 bool Svn::load(const ptree &p)
 {
-  if (!SourceUrl::load(p))
-    return false;
-  PTREE_GET_STRING(tag);
-  PTREE_GET_STRING(branch);
-  PTREE_GET_STRING(commit);
-  return true;
+    if (!SourceUrl::load(p))
+        return false;
+    PTREE_GET_STRING(tag);
+    PTREE_GET_STRING(branch);
+    PTREE_GET_INT(revision);
+    return true;
 }
 
 bool Svn::save(ptree &p) const
 {
-  if (!SourceUrl::save(p))
-    return false;
-  PTREE_ADD_NOT_EMPTY(tag);
-  PTREE_ADD_NOT_EMPTY(branch);
-  PTREE_ADD_NOT_EMPTY(commit);
-  return true;
+    if (!SourceUrl::save(p))
+        return false;
+    PTREE_ADD_NOT_EMPTY(tag);
+    PTREE_ADD_NOT_EMPTY(branch);
+    PTREE_ADD_NOT_MINUS_ONE(revision);
+    return true;
 }
 
 void Svn::save(yaml &root, const String &name) const
 {
-  SourceUrl::save(root, name);
-  YAML_SET_NOT_EMPTY(tag);
-  YAML_SET_NOT_EMPTY(branch);
-  YAML_SET_NOT_EMPTY(commit);
+    SourceUrl::save(root, name);
+    YAML_SET_NOT_EMPTY(tag);
+    YAML_SET_NOT_EMPTY(branch);
+    YAML_SET_NOT_MINUS_ONE(revision);
 }
 
 String Svn::print() const
 {
-  auto r = SourceUrl::print();
-  if (r.empty())
+    auto r = SourceUrl::print();
+    if (r.empty())
+        return r;
+    STRING_PRINT_NOT_EMPTY(tag);
+    STRING_PRINT_NOT_EMPTY(branch);
+    STRING_PRINT_NOT_MINUS_ONE(revision);
     return r;
-  STRING_PRINT_NOT_EMPTY(tag);
-  STRING_PRINT_NOT_EMPTY(branch);
-  STRING_PRINT_NOT_EMPTY(commit);
-  return r;
 }
 
 String Svn::printCpp() const
 {
-  String s;
-  s += "Git(\"" + url;
-  s += "\", \"" + tag;
-  if (tag.empty())
-  {
-    s += "\", \"" + branch;
-    if (branch.empty())
-      s += "\", \"" + commit;
-  }
-  s += "\")";
-  return s;
+    return String();
 }
 
 void Svn::applyVersion(const Version &v)
 {
-  SourceUrl::applyVersion(v);
-  ::applyVersion(tag, v);
-  ::applyVersion(branch, v);
+    SourceUrl::applyVersion(v);
+    ::applyVersion(tag, v);
+    ::applyVersion(branch, v);
 }
 
 void Svn::loadVersion(Version &version)
 {
-  auto ver = (version.isValid() && version != Version(-1, -1, -1)) ? version.toString() : ""s;
+    auto ver = (version.isValid() && version != Version(-1, -1, -1)) ? version.toString() : ""s;
 
-  if (ver.empty())
-  {
-    if (branch.empty() && tag.empty())
+    if (ver.empty())
     {
-      ver = "master";
-      version = Version(ver);
+        if (branch.empty() && tag.empty() && revision == -1)
+        {
+            ver = "trunk";
+            version = Version(ver);
+        }
+        else if (!branch.empty())
+        {
+            ver = branch;
+            try
+            {
+                // branch may contain bad symbols, so put in try...catch
+                version = Version(ver);
+            }
+            catch (std::exception &)
+            {
+            }
+        }
+        else if (!tag.empty())
+        {
+            ver = tag;
+            try
+            {
+                // tag may contain bad symbols, so put in try...catch
+                version = Version(ver);
+            }
+            catch (std::exception &)
+            {
+            }
+        }
+        else if (revision != -1)
+        {
+            ver = revision;
+            try
+            {
+                // tag may contain bad symbols, so put in try...catch
+                version = Version(ver);
+            }
+            catch (std::exception &)
+            {
+            }
+        }
     }
-    else if (!branch.empty())
-    {
-      ver = branch;
-      try
-      {
-        // branch may contain bad symbols, so put in try...catch
-        version = Version(ver);
-      }
-      catch (std::exception &)
-      {
-      }
-    }
-    else if (!tag.empty())
-    {
-      ver = tag;
-      try
-      {
-        // tag may contain bad symbols, so put in try...catch
-        version = Version(ver);
-      }
-      catch (std::exception &)
-      {
-      }
-    }
-  }
 
-  if (version.isValid() && branch.empty() && tag.empty() && commit.empty())
-  {
-    if (version.isBranch())
-      branch = version.toString();
-    else
-      tag = version.toString();
-  }
+    if (version.isValid() && branch.empty() && tag.empty() && revision != -1)
+    {
+        if (version.isBranch())
+            branch = version.toString();
+        else
+            tag = version.toString();
+    }
 }

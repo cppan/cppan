@@ -174,29 +174,29 @@ struct Cvs : SourceUrl
 
 struct Svn : SourceUrl
 {
-  String tag;
-  String branch;
-  String commit;
+    String tag;
+    String branch;
+    int64_t revision = -1;
 
-  Svn() = default;
-  Svn(const yaml &root, const String &name = Svn::getString());
+    Svn() = default;
+    Svn(const yaml &root, const String &name = Svn::getString());
 
-  void download() const;
-  bool isValid(String *error = nullptr) const;
-  bool load(const ptree &p);
-  bool save(ptree &p) const;
-  void save(yaml &root, const String &name = Svn::getString()) const;
-  String print() const;
-  String printCpp() const;
-  void applyVersion(const Version &v);
-  void loadVersion(Version &v);
+    void download() const;
+    bool isValid(String *error = nullptr) const;
+    bool load(const ptree &p);
+    bool save(ptree &p) const;
+    void save(yaml &root, const String &name = Svn::getString()) const;
+    String print() const;
+    String printCpp() const;
+    void applyVersion(const Version &v);
+    void loadVersion(Version &v);
 
-  bool operator==(const Git &rhs) const
-  {
-    return std::tie(url, tag, branch, commit) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.commit);
-  }
+    bool operator==(const Svn &rhs) const
+    {
+        return std::tie(url, tag, branch, revision) == std::tie(rhs.url, rhs.tag, rhs.branch, rhs.revision);
+    }
 
-  static String getString() { return "svn"; }
+    static String getString() { return "svn"; }
 };
 
 struct RemoteFile : SourceUrl
