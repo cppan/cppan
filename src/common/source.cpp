@@ -1041,7 +1041,7 @@ void Svn::download() const
         if (!tag.empty())
             Command::execute({ "svn", "sw",  branchPath }); //tag
         else if (!branch.empty())
-            Command::execute({ "cvs", "sw",  branchPath }); //branch
+            Command::execute({ "svn", "sw",  branchPath }); //branch
         else if (revision != -1) 
             Command::execute({ "svn", "up", "-r" + revision });
     });
