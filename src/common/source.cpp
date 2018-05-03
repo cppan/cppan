@@ -1036,9 +1036,9 @@ void Svn::download() const
         Command::execute({ "svn", "checkout", url + "/trunk"});
 
         if (!tag.empty())
-            Command::execute({ "svn", "sw", url + "/tags" + tag}); //tag
+            Command::execute({ "svn", "sw", url + "/tags/" + tag}); //tag
         else if (!branch.empty())
-            Command::execute({ "svn", "sw", url + "/branches" + branch}); //branch
+            Command::execute({ "svn", "sw", url + "/branches/" + branch}); //branch
         else if (revision != -1) 
             Command::execute({ "svn", "up", "-r" + revision });
     });
