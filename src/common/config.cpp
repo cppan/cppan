@@ -38,7 +38,7 @@
 Config::Config()
 {
     addDefaultProject();
-	dir = current_thread_path();
+    dir = current_thread_path();
 }
 
 Config::Config(const path &p, bool local)
@@ -59,7 +59,7 @@ void Config::reload(const path &p)
     else
     {
         dir = p.parent_path();
-		ScopedCurrentPath cp(dir, CurrentPathScope::Thread);
+        ScopedCurrentPath cp(dir, CurrentPathScope::Thread);
         load(p);
     }
 }
@@ -67,7 +67,7 @@ void Config::reload(const path &p)
 void Config::addDefaultProject()
 {
     Project p{ ProjectPath() };
-	p.load(yaml());
+    p.load(yaml());
     p.pkg = pkg;
     projects.clear();
     projects.emplace("", p);
@@ -134,6 +134,16 @@ void Config::load(const yaml &root)
     if (!check_config_root(root))
         return;
 
+    projects.clear();
+
+    // load subdirs
+    auto sd = root["add_subdirectories"];
+    if (sd.IsDefined())
+    {
+        for (auto &d : get_sequence<path>(sd))
+            reload(d);
+    }
+
     load_settings(root);
 
     ProjectPath root_project;
@@ -157,7 +167,6 @@ void Config::load(const yaml &root)
         projects.emplace(project.pkg.ppath.toString(), project);
     };
 
-    projects.clear();
     if (prjs.IsDefined())
     {
         for (auto prj : prjs)
