@@ -1024,7 +1024,7 @@ void PackagesDatabase::load(bool drop)
             throw std::runtime_error(sqlite3_errmsg(mdb));
 
         auto fn = db_repo_dir / (td.name + ".csv");
-        boost::nowide::ifstream ifile(fn.string());
+        std::ifstream ifile(fn);
         if (!ifile)
             throw std::runtime_error("Cannot open file " + fn.string() + " for reading");
 

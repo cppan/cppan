@@ -547,9 +547,9 @@ void Settings::clear_local_settings()
 
 void Settings::save(const path &p) const
 {
-    boost::nowide::ofstream o(p.string());
+    std::ofstream o(p);
     if (!o)
-        throw std::runtime_error("Cannot open file: " + p.string());
+        throw std::runtime_error("Cannot open file: " + p.u8string());
     yaml root;
     root["remotes"][DEFAULT_REMOTE_NAME]["url"] = remotes[0].url;
     root["storage_dir"] = storage_dir.string();

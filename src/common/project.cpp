@@ -197,9 +197,9 @@ void check_file_types(const Files &files)
         throw std::runtime_error("Project sources did not pass file checks:\n" + errors);
 
     auto fn = get_temp_filename();
-    boost::nowide::ofstream o(fn.string(), std::ios::binary | std::ios::out);
+    std::ofstream o(fn, std::ios::binary | std::ios::out);
     if (!o)
-        throw std::runtime_error("Cannot open file for writing: " + fn.string());
+        throw std::runtime_error("Cannot open file for writing: " + fn.u8string());
     for (auto &file : files)
         o << "file -ib " << normalize_path(file) << "\n";
     o.close();

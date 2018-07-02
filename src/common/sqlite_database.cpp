@@ -109,7 +109,7 @@ sqlite3 *load_from_file(const path &fn, bool read_only)
     else
         flags |= SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
     sqlite3_enable_shared_cache(1);
-    ok = sqlite3_open_v2(fn.string().c_str(), &db, flags, nullptr) == SQLITE_OK;
+    ok = sqlite3_open_v2(fn.u8string().c_str(), &db, flags, nullptr) == SQLITE_OK;
     if (!ok)
     {
         String error = "Can't open database file: " + fn.string() + " error: " + sqlite3_errmsg(db);

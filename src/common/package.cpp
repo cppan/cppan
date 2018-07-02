@@ -58,7 +58,7 @@ path Package::getStampFilename() const
 String Package::getStampHash() const
 {
     String hash;
-    boost::nowide::ifstream ifile(getStampFilename().string());
+    std::ifstream ifile(getStampFilename());
     if (ifile)
         ifile >> hash;
     return hash;

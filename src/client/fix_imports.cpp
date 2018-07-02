@@ -59,7 +59,7 @@ void fix_imports(const String &target, const path &aliases_file, const path &old
 
     if (!new_file.parent_path().empty())
         fs::create_directories(new_file.parent_path());
-    boost::nowide::ofstream ofile(new_file.string());
+    std::ofstream ofile(new_file);
     if (!ofile)
         throw std::runtime_error("Cannot open the output file for writing");
 
