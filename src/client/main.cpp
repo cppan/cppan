@@ -34,7 +34,6 @@
 #include <verifier.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/nowide/args.hpp>
 #include <primitives/command.h>
 #include <primitives/pack.h>
 #include <primitives/templates.h>
@@ -68,13 +67,6 @@ void command_init(const Strings &args);
 int main1(int argc, char *argv[])
 try
 {
-    // library initializations
-    setup_utf8_filesystem();
-
-    // fix arguments - make them UTF-8
-    boost::nowide::args wargs(argc, argv);
-
-    //
     Strings args;
     for (auto i = 0; i < argc; i++)
         args.push_back(argv[i]);

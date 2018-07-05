@@ -34,7 +34,6 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/nowide/fstream.hpp>
 #include <sqlite3.h>
 
 #include <shared_mutex>

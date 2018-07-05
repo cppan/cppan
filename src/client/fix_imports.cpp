@@ -23,7 +23,6 @@
 #include <printers/cmake.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/nowide/fstream.hpp>
 
 #include <deque>
 #include <iostream>

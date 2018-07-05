@@ -1074,4 +1074,108 @@ function(cppan_qt5_wrap_cpp outfiles)
     endif()
 endfunction()
 
+########################################
+# MACRO ragel
+########################################
+
+macro(ragel f)
+    set(i ${SDIR}/${f})
+    set(o ${BDIR_PRIVATE}/${f}.cpp)
+    add_custom_command(OUTPUT ${o}
+        COMMAND pvt.cppan.demo.ragel ${i} -o ${o}
+        DEPENDS ${i}
+    )
+    set(src ${src} ${o})
+endmacro(ragel)
+
+########################################
+# FUNCTION flex_bison
+########################################
+
+function(flex_bison lexer parser)
+    set(multiValueArgs LEXER_ARGS PARSER_ARGS)
+    cmake_parse_arguments(FB "" "" "${multiValueArgs}" ${ARGN})
+
+    set(bdir ${BDIR_PRIVATE}/fb)
+
+    if (NOT WIN32)
+        set(flex flex)
+        set(bison bison)
+    endif()
+
+    get_filename_component(d ${parser} DIRECTORY)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${bdir}/${d})
+
+    add_custom_command(OUTPUT
+            ${bdir}/${parser}.cpp
+            ${bdir}/${parser}.hpp
+        COMMAND ${bison} ${FB_PARSER_ARGS} -o ${bdir}/${parser}.cpp --defines=${bdir}/${parser}.hpp ${SDIR}/${parser}
+        DEPENDS ${bison} ${SDIR}/${parser}
+        WORKING_DIRECTORY ${bdir}/${d}
+    )
+    target_include_directories(${this} PRIVATE ${bdir}/${d})
+
+    get_filename_component(d ${lexer} DIRECTORY)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${bdir}/${d})
+
+    add_custom_command(OUTPUT
+            ${bdir}/${lexer}.cpp
+            #${bdir}/${lexer}.h
+        #COMMAND ${flex} -o ${bdir}/${lexer}.cpp --header-file=${lexer}.h ${SDIR}/${lexer}
+        COMMAND ${flex} ${FB_LEXER_ARGS} -o ${bdir}/${lexer}.cpp ${SDIR}/${lexer}
+        DEPENDS ${flex} ${SDIR}/${lexer} ${bdir}/${parser}.hpp
+        WORKING_DIRECTORY ${bdir}
+    )
+    target_include_directories(${this} PRIVATE ${bdir}/${d})
+
+    target_sources(${this} PRIVATE
+        ${bdir}/${parser}.cpp
+        ${bdir}/${parser}.hpp
+        ${bdir}/${lexer}.cpp
+        #${bdir}/${lexer}.h
+    )
+endfunction()
+
+########################################
+# FUNCTION flex_bison_pair
+########################################
+
+function(flex_bison_pair type name)
+    get_filename_component(dir ${name} DIRECTORY)
+    get_filename_component(name2 ${name} NAME)
+    set(name ${name2})
+
+    string(TOUPPER ${name} name_upper)
+    string(SUBSTRING ${name} 0 1 first_letter)
+    string(SUBSTRING ${name} 1 -1 rest)
+    string(TOUPPER ${first_letter} first_letter)
+    set(parser_name ${first_letter}${rest}Parser)
+
+    set(parser_include ${BDIR_PRIVATE}/${name}_parser.h)
+    set(parser_include_in ${parser_include}.in)
+    file(WRITE ${parser_include_in} "
+        #pragma once
+
+        #define THIS_PARSER_NAME    ${name}
+        #define THIS_PARSER_NAME_UP ${name_upper}
+        #define MY_PARSER           ${parser_name}
+
+        #define ${type}
+
+        #include <primitives/helper/bison.h>
+        #include <${name}.yy.hpp>
+
+        DECLARE_PARSER;
+    ")
+
+    add_custom_command(OUTPUT ${parser_include}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${parser_include_in} ${parser_include}
+        DEPENDS ${parser_include_in}
+    )
+    target_sources(${this} PRIVATE ${parser_include})
+
+    # after include
+    flex_bison(${dir}/${name}.ll ${dir}/${name}.yy LEXER_ARGS --prefix=ll_${name} PARSER_ARGS -Dapi.prefix={yy_${name}})
+endfunction()
+
 ################################################################################

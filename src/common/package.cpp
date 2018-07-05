@@ -23,7 +23,6 @@
 #include "lock.h"
 
 #include <boost/algorithm/string.hpp>
-#include <boost/nowide/fstream.hpp>
 
 #include <regex>
 #include <shared_mutex>

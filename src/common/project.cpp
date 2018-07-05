@@ -27,7 +27,6 @@
 #include <exceptions.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/nowide/fstream.hpp>
 
 #include <primitives/command.h>
 #include <primitives/pack.h>

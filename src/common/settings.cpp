@@ -26,7 +26,6 @@
 #include "stamp.h"
 
 #include <boost/algorithm/string.hpp>
-#include <boost/nowide/fstream.hpp>
 
 #include <primitives/hasher.h>
 #include <primitives/templates.h>
