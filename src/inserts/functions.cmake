@@ -1075,10 +1075,10 @@ function(cppan_qt5_wrap_cpp outfiles)
 endfunction()
 
 ########################################
-# MACRO ragel
+# MACRO cppan_ragel
 ########################################
 
-macro(ragel f)
+macro(cppan_ragel f)
     set(i ${SDIR}/${f})
     set(o ${BDIR_PRIVATE}/${f}.cpp)
     add_custom_command(OUTPUT ${o}
@@ -1089,10 +1089,10 @@ macro(ragel f)
 endmacro()
 
 ########################################
-# MACRO re2c
+# MACRO cppan_re2c
 ########################################
 
-macro(re2c f)
+macro(cppan_re2c f)
     set(i ${SDIR}/${f})
     set(o ${BDIR_PRIVATE}/${f}.cpp)
     add_custom_command(OUTPUT ${o}
@@ -1103,11 +1103,11 @@ macro(re2c f)
 endmacro()
 
 ########################################
-# FUNCTION flex_bison
+# FUNCTION cppan_flex_bison_internal
 ########################################
 
-function(flex_bison lexer parser)
-    set(multiValueArgs LEXER_ARGS PARSER_ARGS)
+function(cppan_flex_bison_internal lexer)
+    set(multiValueArgs LEXER_ARGS PARSERS PARSER_ARGS)
     cmake_parse_arguments(FB "" "" "${multiValueArgs}" ${ARGN})
 
     set(bdir ${BDIR_PRIVATE}/fb)
@@ -1117,27 +1117,36 @@ function(flex_bison lexer parser)
         set(bison bison)
     endif()
 
-    # parser
-    get_filename_component(name ${parser} NAME)
+    # parsers
+    set(parser_headers)
+    foreach(parser ${FB_PARSERS})
+        get_filename_component(name ${parser} NAME)
+        #get_filename_component(name_we ${parser} NAME_WE)
 
-    set(d ${bdir}/${name})
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${d})
+        set(d ${bdir}/${name})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${d})
 
-    add_custom_command(OUTPUT
+        add_custom_command(OUTPUT
+                ${d}/${name}.cpp
+                ${d}/${name}.hpp
+            COMMAND ${bison}
+                ${FB_PARSER_ARGS}
+                #-Dapi.prefix={yy_${name_we}}
+                -o ${d}/${name}.cpp
+                --defines=${d}/${name}.hpp
+                ${SDIR}/${parser}
+            DEPENDS ${bison} ${SDIR}/${parser}
+            WORKING_DIRECTORY ${d}
+        )
+        target_include_directories(${this} PRIVATE ${d})
+
+        target_sources(${this} PRIVATE
             ${d}/${name}.cpp
             ${d}/${name}.hpp
-        COMMAND ${bison} ${FB_PARSER_ARGS} -o ${d}/${name}.cpp --defines=${d}/${name}.hpp ${SDIR}/${parser}
-        DEPENDS ${bison} ${SDIR}/${parser}
-        WORKING_DIRECTORY ${d}
-    )
-    target_include_directories(${this} PRIVATE ${d})
+        )
 
-    target_sources(${this} PRIVATE
-        ${d}/${name}.cpp
-        ${d}/${name}.hpp
-    )
-
-    set(parser_header ${d}/${name}.hpp)
+        set(parser_headers ${parser_headers} ${d}/${name}.hpp)
+    endforeach()
 
     # lexer
     get_filename_component(d ${lexer} DIRECTORY)
@@ -1148,7 +1157,7 @@ function(flex_bison lexer parser)
             #${bdir}/${lexer}.h
         #COMMAND ${flex} -o ${bdir}/${lexer}.cpp --header-file=${lexer}.h ${SDIR}/${lexer}
         COMMAND ${flex} ${FB_LEXER_ARGS} -o ${bdir}/${lexer}.cpp ${SDIR}/${lexer}
-        DEPENDS ${flex} ${SDIR}/${lexer} ${parser_header}
+        DEPENDS ${flex} ${SDIR}/${lexer} ${parser_headers}
         WORKING_DIRECTORY ${bdir}
     )
     target_include_directories(${this} PRIVATE ${bdir}/${d})
@@ -1160,10 +1169,10 @@ function(flex_bison lexer parser)
 endfunction()
 
 ########################################
-# FUNCTION flex_bison_pair
+# MACRO cppan_generate_flex_bison_config
 ########################################
 
-function(flex_bison_pair type name)
+macro(cppan_generate_flex_bison_config)
     get_filename_component(dir ${name} DIRECTORY)
     get_filename_component(name2 ${name} NAME)
     set(name ${name2})
@@ -1180,10 +1189,15 @@ function(flex_bison_pair type name)
 
 #undef THIS_PARSER_NAME
 #undef THIS_PARSER_NAME_UP
-#undef MY_PARSER
+#undef THIS_LEXER_NAME
+#undef THIS_LEXER_NAME_UP
 
 #define THIS_PARSER_NAME    ${name}
 #define THIS_PARSER_NAME_UP ${name_upper}
+#define THIS_LEXER_NAME     ${lexer_name}
+#define THIS_LEXER_NAME_UP  ${lexer_name_up}
+
+#undef MY_PARSER
 #define MY_PARSER           ${parser_name}
 
 #define ${type}
@@ -1198,9 +1212,44 @@ function(flex_bison_pair type name)
         DEPENDS ${parser_include_in}
     )
     target_sources(${this} PRIVATE ${parser_include})
+endmacro()
+
+########################################
+# FUNCTION cppan_flex_bison_pair
+########################################
+
+function(cppan_flex_bison_pair type name)
+    set(lexer_name THIS_PARSER_NAME)
+    set(lexer_name_up THIS_PARSER_NAME_UP)
+    cppan_generate_flex_bison_config()
 
     # after include
-    flex_bison(${dir}/${name}.ll ${dir}/${name}.yy LEXER_ARGS --prefix=ll_${name} PARSER_ARGS -Dapi.prefix={yy_${name}})
+    cppan_flex_bison_internal(${dir}/${name}.ll PARSERS ${dir}/${name}.yy LEXER_ARGS --prefix=ll_${name} PARSER_ARGS -Dapi.prefix={yy_${name}})
+endfunction()
+
+########################################
+# FUNCTION cppan_flex_bison_multiple_parsers
+########################################
+
+function(cppan_flex_bison_multiple_parsers type lexer_name)
+    message(FATAL_ERROR "not implemented")
+
+    set(multiValueArgs PARSERS)
+    cmake_parse_arguments(FB "" "" "${multiValueArgs}" ${ARGN})
+
+    get_filename_component(lexer_dir ${lexer_name} DIRECTORY)
+    get_filename_component(lexer_name ${lexer_name} NAME)
+    string(TOUPPER ${lexer_name} lexer_name_up)
+
+    set(PARSERS)
+    foreach(p ${FB_PARSERS})
+        set(name ${p})
+        cppan_generate_flex_bison_config()
+        set(PARSERS ${PARSERS} ${dir}/${name}.yy)
+    endforeach()
+
+    # after include
+    cppan_flex_bison_internal(${dir}/${name}.ll PARSERS ${PARSERS} LEXER_ARGS --prefix=ll_${name})
 endfunction()
 
 ################################################################################
