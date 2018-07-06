@@ -1086,7 +1086,21 @@ macro(ragel f)
         DEPENDS ${i}
     )
     set(src ${src} ${o})
-endmacro(ragel)
+endmacro()
+
+########################################
+# MACRO re2c
+########################################
+
+macro(re2c f)
+    set(i ${SDIR}/${f})
+    set(o ${BDIR_PRIVATE}/${f}.cpp)
+    add_custom_command(OUTPUT ${o}
+        COMMAND pvt.cppan.demo.re2c.re2c -o ${o} ${i}
+        DEPENDS ${i}
+    )
+    set(src ${src} ${o})
+endmacro()
 
 ########################################
 # FUNCTION flex_bison
@@ -1103,18 +1117,29 @@ function(flex_bison lexer parser)
         set(bison bison)
     endif()
 
-    get_filename_component(d ${parser} DIRECTORY)
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${bdir}/${d})
+    # parser
+    get_filename_component(name ${parser} NAME)
+
+    set(d ${bdir}/${name})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${d})
 
     add_custom_command(OUTPUT
-            ${bdir}/${parser}.cpp
-            ${bdir}/${parser}.hpp
-        COMMAND ${bison} ${FB_PARSER_ARGS} -o ${bdir}/${parser}.cpp --defines=${bdir}/${parser}.hpp ${SDIR}/${parser}
+            ${d}/${name}.cpp
+            ${d}/${name}.hpp
+        COMMAND ${bison} ${FB_PARSER_ARGS} -o ${d}/${name}.cpp --defines=${d}/${name}.hpp ${SDIR}/${parser}
         DEPENDS ${bison} ${SDIR}/${parser}
-        WORKING_DIRECTORY ${bdir}/${d}
+        WORKING_DIRECTORY ${d}
     )
-    target_include_directories(${this} PRIVATE ${bdir}/${d})
+    target_include_directories(${this} PRIVATE ${d})
 
+    target_sources(${this} PRIVATE
+        ${d}/${name}.cpp
+        ${d}/${name}.hpp
+    )
+
+    set(parser_header ${d}/${name}.hpp)
+
+    # lexer
     get_filename_component(d ${lexer} DIRECTORY)
     execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${bdir}/${d})
 
@@ -1123,14 +1148,12 @@ function(flex_bison lexer parser)
             #${bdir}/${lexer}.h
         #COMMAND ${flex} -o ${bdir}/${lexer}.cpp --header-file=${lexer}.h ${SDIR}/${lexer}
         COMMAND ${flex} ${FB_LEXER_ARGS} -o ${bdir}/${lexer}.cpp ${SDIR}/${lexer}
-        DEPENDS ${flex} ${SDIR}/${lexer} ${bdir}/${parser}.hpp
+        DEPENDS ${flex} ${SDIR}/${lexer} ${parser_header}
         WORKING_DIRECTORY ${bdir}
     )
     target_include_directories(${this} PRIVATE ${bdir}/${d})
 
     target_sources(${this} PRIVATE
-        ${bdir}/${parser}.cpp
-        ${bdir}/${parser}.hpp
         ${bdir}/${lexer}.cpp
         #${bdir}/${lexer}.h
     )
@@ -1153,20 +1176,22 @@ function(flex_bison_pair type name)
 
     set(parser_include ${BDIR_PRIVATE}/${name}_parser.h)
     set(parser_include_in ${parser_include}.in)
-    file(WRITE ${parser_include_in} "
-        #pragma once
+    file(WRITE ${parser_include_in} "#pragma once
 
-        #define THIS_PARSER_NAME    ${name}
-        #define THIS_PARSER_NAME_UP ${name_upper}
-        #define MY_PARSER           ${parser_name}
+#undef THIS_PARSER_NAME
+#undef THIS_PARSER_NAME_UP
+#undef MY_PARSER
 
-        #define ${type}
+#define THIS_PARSER_NAME    ${name}
+#define THIS_PARSER_NAME_UP ${name_upper}
+#define MY_PARSER           ${parser_name}
 
-        #include <primitives/helper/bison.h>
-        #include <${name}.yy.hpp>
+#define ${type}
+#include <primitives/helper/bison.h>
+#undef ${type}
 
-        DECLARE_PARSER;
-    ")
+#include <${name}.yy.hpp>
+")
 
     add_custom_command(OUTPUT ${parser_include}
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${parser_include_in} ${parser_include}
