@@ -1212,6 +1212,9 @@ macro(cppan_generate_flex_bison_config)
         DEPENDS ${parser_include_in}
     )
     target_sources(${this} PRIVATE ${parser_include})
+
+    # set potential access to private fields
+    target_compile_definitions(${this} PRIVATE HAVE_BISON_${name_upper}_PARSER)
 endmacro()
 
 ########################################
