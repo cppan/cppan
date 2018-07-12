@@ -1516,7 +1516,7 @@ String Project::print_cpp()
         for (auto &t : sources)
         {
             s += "\"" + t + "\"";
-            if (t.find("\\") != -1 || t.find("*") != -1)
+            if (t.find("\\") != String::npos || t.find("*") != String::npos)
                 s += "_rr";
             s += ",\n";
         }
@@ -1533,7 +1533,7 @@ String Project::print_cpp()
         for (auto &t : exclude_from_build)
         {
             s += "\"" + t + "\"";
-            if (t.find("\\") != -1 || t.find("*") != -1)
+            if (t.find("\\") != String::npos || t.find("*") != String::npos)
                 s += "_rr";
             s += ",\n";
         }
@@ -1550,7 +1550,7 @@ String Project::print_cpp()
         for (auto &t : exclude_from_package)
         {
             s += "\"" + t + "\"";
-            if (t.find("\\") != -1 || t.find("*") != -1)
+            if (t.find("\\") != String::npos || t.find("*") != String::npos)
                 s += "_rr";
             s += ",\n";
         }
@@ -1566,7 +1566,7 @@ String Project::print_cpp()
         String s;
         for (auto &t : include_directories.private_)
         {
-            if (t.string().find("BDIR") == -1)
+            if (t.string().find("BDIR") == String::npos)
                 s += "\"" + t.string() + "\"_id,\n";
         }
         s.resize(s.size() - 2);
@@ -1580,7 +1580,7 @@ String Project::print_cpp()
         String s;
         for (auto &t : include_directories.public_)
         {
-            if (t.string().find("BDIR") == -1)
+            if (t.string().find("BDIR") == String::npos)
                 s += "\"" + t.string() + "\"_id,\n";
         }
         s.resize(s.size() - 2);
@@ -1824,7 +1824,7 @@ String Project::print_cpp2()
         for (auto &t : sources)
         {
             s += "\"" + t + "\"";
-            if (t.find("\\") != -1 || t.find("*") != -1)
+            if (t.find("\\") != String::npos || t.find("*") != String::npos)
                 s += "_rr";
             s += ",\n";
         }
@@ -1843,7 +1843,7 @@ String Project::print_cpp2()
         for (auto &t : exclude_from_build)
         {
             s += "\"" + t + "\"";
-            if (t.find("\\") != -1 || t.find("*") != -1)
+            if (t.find("\\") != String::npos || t.find("*") != String::npos)
                 s += "_rr";
             s += ",\n";
         }
@@ -1862,7 +1862,7 @@ String Project::print_cpp2()
         for (auto &t : exclude_from_package)
         {
             s += "\"" + t + "\"";
-            if (t.find("\\") != -1 || t.find("*") != -1)
+            if (t.find("\\") != String::npos || t.find("*") != String::npos)
                 s += "_rr";
             s += ",\n";
         }
@@ -1880,7 +1880,7 @@ String Project::print_cpp2()
         String s;
         for (auto &t : include_directories.private_)
         {
-            if (t.string().find("BDIR") == -1)
+            if (t.string().find("BDIR") == String::npos)
                 s += "\"" + t.string() + "\"_id,\n";
         }
         s.resize(s.size() - 2);
@@ -1896,7 +1896,7 @@ String Project::print_cpp2()
         for (auto &t : include_directories.public_)
         {
             auto str = t.string();
-            if (str.find("BDIR") != -1)
+            if (str.find("BDIR") != String::npos)
                 continue;
             if (str == ".")
                 continue;
