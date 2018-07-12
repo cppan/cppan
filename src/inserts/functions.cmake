@@ -144,33 +144,23 @@ function(remove_src_dir var)
 endfunction(remove_src_dir)
 
 ########################################
+# FUNCTION remove_src_dir_regex
+########################################
+
+function(remove_src_dir_regex var)
+    if (src)
+        list(FILTER src EXCLUDE REGEX "${var}")
+        set(src ${src} PARENT_SCOPE)
+    endif()
+endfunction(remove_src_dir_regex)
+
+########################################
 # FUNCTION project_group
 ########################################
 
 function(project_group target name)
     set_target_properties(${target} PROPERTIES FOLDER ${name})
 endfunction(project_group)
-
-########################################
-# FUNCTION file_write_once
-########################################
-
-function(file_write_once f c)
-    # multiple instances safe
-    set(once ${f}.cppan.once)
-    string(SHA1 h "${c}")
-    if (NOT EXISTS ${once})
-        file_write_safe(${f} "${c}")
-        file_write_safe(${once} "${h}")
-        return()
-    endif()
-    file(READ ${once} h2)
-    if (NOT "${h}" STREQUAL "${h2}")
-        file_write_safe(${f} "${c}")
-        file_write_safe(${once} "${h}")
-        return()
-    endif()
-endfunction(file_write_once)
 
 ########################################
 # FUNCTION file_write_safe
@@ -363,6 +353,10 @@ endfunction(get_configuration_with_generator_unhashed)
 ########################################
 
 function(get_configuration_exe_unhashed out)
+    #get_configuration_unhashed(config)
+    #set(${out} ${config} PARENT_SCOPE)
+    #return()
+
     prepare_config_part(system "${CMAKE_SYSTEM_NAME}")
     prepare_config_part(processor "${CMAKE_HOST_SYSTEM_PROCESSOR}")
     set(config ${system}${CPPAN_CONFIG_PART_DELIMETER}${processor})
@@ -666,6 +660,27 @@ function(check_result_variable ret)
 endfunction(check_result_variable)
 
 ########################################
+# FUNCTION file_write_once
+########################################
+
+function(file_write_once f c)
+    # multiple instances safe
+    set(once ${f}.cppan.once)
+    string(SHA1 h "${c}")
+    if (NOT EXISTS ${once})
+        file_write_safe(${f} "${c}")
+        file_write_safe(${once} "${h}")
+        return()
+    endif()
+    file(READ ${once} h2)
+    if (NOT "${h}" STREQUAL "${h2}")
+        file_write_safe(${f} "${c}")
+        file_write_safe(${once} "${h}")
+        return()
+    endif()
+endfunction(file_write_once)
+
+########################################
 # FUNCTION replace_in_file_once
 ########################################
 
@@ -677,9 +692,15 @@ function(replace_in_file_once f from to)
     # cannot set this file to bdir because multiple configs use
     # different bdirs and will do multiple replacements
     set(h ${f}.${h})
+    set(ch ${f}.cppan.hash)
 
-    if (EXISTS ${h})
-        return()
+    if (EXISTS ${h} AND EXISTS ${ch})
+        file(READ ${ch} h2)
+        file(READ ${f} fc)
+        string(SHA1 h3 "${fc}")
+        if ("${h2}" STREQUAL "${h3}")
+            return()
+        endif()
     endif()
 
     set(lock ${f}.lock)
@@ -693,16 +714,23 @@ function(replace_in_file_once f from to)
     endif()
 
     # double check
-    if (EXISTS ${h})
-        return()
+    if (EXISTS ${h} AND EXISTS ${ch})
+        file(READ ${ch} h2)
+        file(READ ${f} fc)
+        string(SHA1 h3 "${fc}")
+        if ("${h2}" STREQUAL "${h3}")
+            return()
+        endif()
     endif()
 
     file(READ ${f} fc)
     string(REPLACE "${from}" "${to}" fc "${fc}")
+    string(SHA1 h2 "${fc}")
     file(WRITE "${f}" "${fc}")
 
     # create flag file
     file(WRITE ${h} "")
+    file(WRITE ${ch} "${h2}")
 endfunction(replace_in_file_once)
 
 ########################################
@@ -720,10 +748,19 @@ endfunction(delete_in_file_once)
 function(push_front_to_file_once f what)
     string(SHA1 h "${f}${what}")
     string(SUBSTRING "${h}" 0 5 h)
-    set(h ${f}.${h})
 
-    if (EXISTS ${h})
-        return()
+    # cannot set this file to bdir because multiple configs use
+    # different bdirs and will do multiple replacements
+    set(h ${f}.${h})
+    set(ch ${f}.cppan.hash)
+
+    if (EXISTS ${h} AND EXISTS ${ch})
+        file(READ ${ch} h2)
+        file(READ ${f} fc)
+        string(SHA1 h3 "${fc}")
+        if ("${h2}" STREQUAL "${h3}")
+            return()
+        endif()
     endif()
 
     set(lock ${f}.lock)
@@ -737,15 +774,22 @@ function(push_front_to_file_once f what)
     endif()
 
     # double check
-    if (EXISTS ${h})
-        return()
+    if (EXISTS ${h} AND EXISTS ${ch})
+        file(READ ${ch} h2)
+        file(READ ${f} fc)
+        string(SHA1 h3 "${fc}")
+        if ("${h2}" STREQUAL "${h3}")
+            return()
+        endif()
     endif()
 
     file(READ ${f} fc)
+    string(SHA1 h2 "${what}\n\n${fc}")
     file(WRITE "${f}" "${what}\n\n${fc}")
 
     # create flag file
     file(WRITE ${h} "")
+    file(WRITE ${ch} "${h2}")
 endfunction(push_front_to_file_once)
 
 ########################################
@@ -755,10 +799,19 @@ endfunction(push_front_to_file_once)
 function(push_back_to_file_once f what)
     string(SHA1 h "${f}${what}")
     string(SUBSTRING "${h}" 0 5 h)
-    set(h ${f}.${h})
 
-    if (EXISTS ${h})
-        return()
+    # cannot set this file to bdir because multiple configs use
+    # different bdirs and will do multiple replacements
+    set(h ${f}.${h})
+    set(ch ${f}.cppan.hash)
+
+    if (EXISTS ${h} AND EXISTS ${ch})
+        file(READ ${ch} h2)
+        file(READ ${f} fc)
+        string(SHA1 h3 "${fc}")
+        if ("${h2}" STREQUAL "${h3}")
+            return()
+        endif()
     endif()
 
     set(lock ${f}.lock)
@@ -772,16 +825,34 @@ function(push_back_to_file_once f what)
     endif()
 
     # double check
-    if (EXISTS ${h})
-        return()
+    if (EXISTS ${h} AND EXISTS ${ch})
+        file(READ ${ch} h2)
+        file(READ ${f} fc)
+        string(SHA1 h3 "${fc}")
+        if ("${h2}" STREQUAL "${h3}")
+            return()
+        endif()
     endif()
 
     file(READ ${f} fc)
+    string(SHA1 h2 "${fc}\n\n${what}")
     file(WRITE "${f}" "${fc}\n\n${what}")
 
     # create flag file
     file(WRITE ${h} "")
+    file(WRITE ${ch} "${h2}")
 endfunction(push_back_to_file_once)
+
+########################################
+# FUNCTION copy_file_once
+########################################
+
+# this functions prevents changing variables in current scope
+function(copy_file_once from to)
+    if (NOT EXISTS ${to})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${from} ${to})
+    endif()
+endfunction(copy_file_once)
 
 ########################################
 # FUNCTION cppan_include
@@ -836,17 +907,6 @@ function(check_type_alignment TYPE LANG NAME)
 
     set(${NAME} ${${NAME}} CACHE STRING "Alignment of type: ${TYPE}" FORCE)
 endfunction(check_type_alignment)
-
-########################################
-# FUNCTION copy_file_once
-########################################
-
-# this functions prevents changing variables in current scope
-function(copy_file_once from to)
-    if (NOT EXISTS ${to})
-        execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${from} ${to})
-    endif()
-endfunction(copy_file_once)
 
 ########################################
 # FUNCTION find_moc_targets
@@ -1038,6 +1098,12 @@ endfunction()
 ########################################
 
 function(cppan_qt5_wrap_cpp outfiles)
+    if (CPPAN_LOCAL_PROJECT)
+        qt5_wrap_cpp(x ${ARGN})
+        set(${outfiles} ${x} PARENT_SCOPE)
+        return()
+    endif()
+
     # get include dirs
     qt5_get_moc_flags(moc_flags)
 
@@ -1092,9 +1158,9 @@ endmacro()
 # MACRO cppan_re2c
 ########################################
 
-macro(cppan_re2c f)
+macro(cppan_re2c f ext)
     set(i ${SDIR}/${f})
-    set(o ${BDIR_PRIVATE}/${f}.cpp)
+    set(o ${BDIR_PRIVATE}/${f}.${ext})
     add_custom_command(OUTPUT ${o}
         COMMAND pvt.cppan.demo.re2c.re2c -o ${o} ${i}
         DEPENDS ${i}

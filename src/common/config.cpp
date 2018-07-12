@@ -137,7 +137,7 @@ void Config::load(const yaml &root)
     projects.clear();
 
     // load subdirs
-    auto sd = root["add_subdirectories"];
+    auto sd = root["add_directories"];
     if (sd.IsDefined())
     {
         for (auto &d : get_sequence<path>(sd))

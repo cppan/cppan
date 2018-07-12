@@ -1772,9 +1772,17 @@ void CMakePrinter::print_src_config_file(const path &fn) const
         {
             if (!exclude_from_build.empty())
             {
-                auto cpp_regex_2_cmake_regex = [](auto &s)
+                auto cpp_regex_2_cmake_regex = [](const auto &s)
                 {
-                    boost::replace_all(s, ".*", "*");
+                    return boost::replace_all_copy(s, ".*", "*");
+                };
+                auto cpp_regex_2_cmake_regex2 = [](const auto &s)
+                {
+                    /*auto s2 = boost::replace_all_copy(s, "*", ".*");
+                    boost::replace_all(s2, "**", "*");
+                    boost::replace_all(s2, "..*", ".*");
+                    return s2;*/
+                    return s;
                 };
 
                 config_section_title(ctx, "exclude files");
@@ -1782,9 +1790,12 @@ void CMakePrinter::print_src_config_file(const path &fn) const
                 {
                     // try to remove twice (double check) - as a file and as a dir
                     auto s = normalize_path(f);
-                    cpp_regex_2_cmake_regex(s);
+                    s = cpp_regex_2_cmake_regex(s);
+                    auto s2 = normalize_path(f);
+                    s2 = cpp_regex_2_cmake_regex2(s2);
                     ctx.addLine("remove_src    (\"" + s + "\")");
                     ctx.addLine("remove_src_dir(\"" + s + "\")");
+                    ctx.addLine("remove_src_dir_regex(\"" + s2 + "\")");
                     ctx.addLine();
                 }
                 ctx.emptyLines();
@@ -2034,15 +2045,21 @@ endif()
 
                 {
                     auto bdir = pkg.getDirObj() / cppan_build_dir / "${config_dir}";
-                    auto p = normalize_path(get_binary_path(pkg, bdir.string()));
-                    ctx.if_("EXISTS \"" + p + "\"");
-                    ctx.increaseIndent("target_include_directories    (${this}");
-                    if (d.flags[pfHeaderOnly])
-                        ctx.addLine("INTERFACE " + p);
-                    else
-                        ctx.addLine((d.flags[pfExecutable] ? "PRIVATE " : "PUBLIC ") + p);
-                    ctx.decreaseIndent(")");
-                    ctx.endif();
+                    auto p = get_binary_path(pkg, bdir.string());
+                    auto add_dir = [&ctx, this](const auto &p2) mutable
+                    {
+                        auto p = normalize_path(p2);
+                        ctx.if_("EXISTS \"" + p + "\"");
+                        ctx.increaseIndent("target_include_directories    (${this}");
+                        if (d.flags[pfHeaderOnly])
+                            ctx.addLine("INTERFACE " + p);
+                        else
+                            ctx.addLine((d.flags[pfExecutable] ? "PRIVATE " : "PUBLIC ") + p);
+                        ctx.decreaseIndent(")");
+                        ctx.endif();
+                    };
+                    add_dir(bdir);
+                    add_dir(p);
                 }
 
                 ctx.else_();
