@@ -353,9 +353,9 @@ endfunction(get_configuration_with_generator_unhashed)
 ########################################
 
 function(get_configuration_exe_unhashed out)
-    #get_configuration_unhashed(config)
-    #set(${out} ${config} PARENT_SCOPE)
-    #return()
+    get_configuration_unhashed(config)
+    set(${out} ${config} PARENT_SCOPE)
+    return()
 
     prepare_config_part(system "${CMAKE_SYSTEM_NAME}")
     prepare_config_part(processor "${CMAKE_HOST_SYSTEM_PROCESSOR}")

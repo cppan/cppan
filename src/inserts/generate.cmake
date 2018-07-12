@@ -8,7 +8,7 @@ endif()
 # CPPAN_BUILD_SHARED_LIBS has influence on config vars
 if (EXECUTABLE)
     # TODO: try to work 0->1 <- why? maybe left as is?
-    set(CPPAN_BUILD_SHARED_LIBS 0)
+    #set(CPPAN_BUILD_SHARED_LIBS 0)
 endif()
 
 # after all settings
@@ -80,6 +80,7 @@ if (NOT EXISTS ${import} OR
                 # TODO: fix executables bootstrapping
                 # BUG: copying bad cmake config dirs (32 - 64 bits)
                 #set(from ${storage_dir_cfg}/${config_dir}/CMakeFiles/${CMAKE_VERSION})
+                set(from ${CMAKE_BINARY_DIR}/CMakeFiles/${CMAKE_VERSION})
             else()
                 set(from ${CMAKE_BINARY_DIR}/CMakeFiles/${CMAKE_VERSION})
             endif()
