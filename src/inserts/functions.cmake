@@ -1141,6 +1141,25 @@ function(cppan_qt5_wrap_cpp outfiles)
 endfunction()
 
 ########################################
+# MACRO cppan_genpb
+########################################
+
+macro(cppan_genpb f)
+    get_filename_component(n ${f} NAME_WE)
+    get_filename_component(d ${f} DIRECTORY)
+    string(REPLACE "${SDIR}" "" d2 "${d}")
+    set(n ${d2}/${n})
+    add_custom_command(
+        OUTPUT
+            ${BDIR}/${n}.pb.cc
+            ${BDIR}/${n}.pb.h
+        COMMAND
+            pvt.cppan.demo.google.protobuf.protoc ${f} --cpp_out=${BDIR}/${d2} -I ${d}
+    )
+    set(src ${src} ${BDIR}/${n}.pb.cc ${BDIR}/${n}.pb.h)
+endmacro()
+
+########################################
 # MACRO cppan_ragel
 ########################################
 

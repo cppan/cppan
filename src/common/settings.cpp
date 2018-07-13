@@ -374,6 +374,18 @@ String Settings::get_hash() const
     h |= configuration;
     h |= default_configuration;
 
+    for (auto &o : env)
+    {
+        //h |= o.first;
+        //h |= o.second;
+        // do we really need this here?
+#ifdef _WIN32
+        _putenv_s(o.first.c_str(), o.second.c_str());
+#else
+        setenv(o.first.c_str(), o.second.c_str(), 1);
+#endif
+    }
+
     // besides we track all valuable ENV vars
     // to be sure that we'll load correct config
     auto add_env = [&h](const char *var)
@@ -381,6 +393,7 @@ String Settings::get_hash() const
         auto e = getenv(var);
         if (!e)
             return;
+        h |= String(var);
         h |= String(e);
     };
 
