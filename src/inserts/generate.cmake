@@ -7,7 +7,9 @@ endif()
 
 # CPPAN_BUILD_SHARED_LIBS has influence on config vars
 if (EXECUTABLE)
-    if (NINJA)
+    # on ninja shared libs do not work (reason is lost)
+    # on unix the issue is with wrong RPATH, so executables can not load their dependent .so libs
+    if (NINJA OR UNIX)
         # TODO: try to work 0->1 <- why? maybe left as is?
         set(CPPAN_BUILD_SHARED_LIBS 0)
     endif()
