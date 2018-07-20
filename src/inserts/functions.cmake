@@ -353,7 +353,7 @@ endfunction(get_configuration_with_generator_unhashed)
 ########################################
 
 function(get_configuration_exe_unhashed out)
-    if (NOT NINJA)
+    if (NOT NINJA AND NOT UNIX)
         get_configuration_unhashed(config)
         set(${out} ${config} PARENT_SCOPE)
         return()
