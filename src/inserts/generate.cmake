@@ -7,8 +7,10 @@ endif()
 
 # CPPAN_BUILD_SHARED_LIBS has influence on config vars
 if (EXECUTABLE)
-    # TODO: try to work 0->1 <- why? maybe left as is?
-    #set(CPPAN_BUILD_SHARED_LIBS 0)
+    if (NINJA)
+        # TODO: try to work 0->1 <- why? maybe left as is?
+        set(CPPAN_BUILD_SHARED_LIBS 0)
+    endif()
 endif()
 
 # after all settings
