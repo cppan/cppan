@@ -2136,7 +2136,8 @@ endif()
             ctx.addLine("PRIVATE   PACKAGE_BUILD_CONFIG=\"$<CONFIG>\"");
             ctx.addLine("PRIVATE   PACKAGE_BUGREPORT=\"\"");
             ctx.addLine("PRIVATE   PACKAGE_URL=\"\"");
-            ctx.addLine("PRIVATE   PACKAGE_COPYRIGHT_YEAR=2017"); // FIXME: take current year
+            ctx.addLine("PRIVATE   PACKAGE_COPYRIGHT_YEAR=2018"); // FIXME: take current year
+            ctx.addLine("PRIVATE   PACKAGE_ROOT_DIR=\"" + normalize_path(d.ppath.is_loc() ? p.root_directory : d.getDirSrc()) + "\"");
             ctx.decreaseIndent(")");
         }
 
@@ -3127,7 +3128,9 @@ endif()
     ctx.addLine("set_cache_var(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS   1)");
     ctx.addLine("set_cache_var(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)");
     // unknown meaning atm
+    ctx.addLine("set_cache_var(CMAKE_C_RESPONSE_FILE_LINK_FLAG \"@\")");
     ctx.addLine("set_cache_var(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG \"@\")");
+    ctx.addLine("set_cache_var(CMAKE_RC_RESPONSE_FILE_LINK_FLAG \"@\")");
     ctx.addLine();
 
     // cmake includes
