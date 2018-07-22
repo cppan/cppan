@@ -309,6 +309,29 @@ function(get_configuration_unhashed out)
         endif()
     endif()
 
+    # *nix arch
+    set(nix_arch)
+    if (CMAKE_C_LIBRARY_ARCHITECTURE OR CMAKE_CXX_LIBRARY_ARCHITECTURE)
+        set(nix_c_arch)
+        if (CMAKE_C_LIBRARY_ARCHITECTURE)
+            prepare_config_part(nix_c_arch "${CMAKE_C_LIBRARY_ARCHITECTURE}")
+            set(nix_c_arch ${CPPAN_CONFIG_PART_DELIMETER}${nix_c_arch})
+        endif()
+
+        set(nix_cxx_arch)
+        if (CMAKE_CXX_LIBRARY_ARCHITECTURE)
+            prepare_config_part(nix_cxx_arch "${CMAKE_CXX_LIBRARY_ARCHITECTURE}")
+            set(nix_cxx_arch ${CPPAN_CONFIG_PART_DELIMETER}${nix_cxx_arch})
+        endif()
+
+        if ("${nix_c_arch}" STREQUAL "${nix_cxx_arch}")
+            set(nix_arch ${nix_c_arch})
+        else()
+            set(nix_arch ${nix_c_arch}${nix_cxx_arch})
+        endif()
+    endif()
+
+
     # add suffix (configuration) to distinguish build types
     # for non VS/XCODE builds
     set(configuration)
@@ -322,7 +345,7 @@ function(get_configuration_unhashed out)
     endif()
 
     set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${version})
-    set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${bits}${msvc_arch}${mt_flag}${dll}${sysver}${toolset})
+    set(config ${config}${CPPAN_CONFIG_PART_DELIMETER}${bits}${nix_arch}${msvc_arch}${mt_flag}${dll}${sysver}${toolset})
     set(config ${config}${configuration})
 
     set(${out} ${config} PARENT_SCOPE)
