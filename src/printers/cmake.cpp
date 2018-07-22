@@ -1674,10 +1674,10 @@ void CMakePrinter::print_settings(CMakeContext &ctx) const
     ctx.addLine("find_program(CPPAN_COMMAND cppan)");
     ctx.if_("\"${CPPAN_COMMAND}\" STREQUAL \"CPPAN_COMMAND-NOTFOUND\"");
     ctx.addLine("message(WARNING \"'cppan' program was not found. Please, add it to PATH environment variable\")");
-    ctx.addLine("set(CPPAN_COMMAND 0)");
+    ctx.addLine("set_cache_var(CPPAN_COMMAND 0)");
     ctx.endif();
     ctx.endif();
-    ctx.addLine("set(CPPAN_COMMAND ${CPPAN_COMMAND} CACHE STRING \"CPPAN program.\" FORCE)");
+    ctx.addLine("set_cache_var(CPPAN_COMMAND ${CPPAN_COMMAND}");
     ctx.addLine();
 
     if (p.static_only)
@@ -3070,7 +3070,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON))");
         ctx.addLine("set_cache_var(CPPAN_COMMAND 0)");
         ctx.endif();
         ctx.endif();
-        ctx.addLine("set_cache_var(CPPAN_COMMAND ${CPPAN_COMMAND} CACHE STRING \"CPPAN program.\" FORCE)");
+        ctx.addLine("set_cache_var(CPPAN_COMMAND ${CPPAN_COMMAND})");
         ctx.addLine();
     }
     ctx.addLine(R"xxx(
