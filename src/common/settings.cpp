@@ -299,6 +299,11 @@ void Settings::load_build(const yaml &root)
     YAML_EXTRACT_AUTO(build_warning_level);
     YAML_EXTRACT_AUTO(meta_target_suffix);
 
+    YAML_EXTRACT_AUTO(crosscompilation);
+    YAML_EXTRACT_AUTO(host_c_compiler);
+    YAML_EXTRACT_AUTO(host_cxx_compiler);
+    YAML_EXTRACT_AUTO(host_compiler);
+
     for (int i = 0; i < CMakeConfigurationType::Max; i++)
     {
         auto t = configuration_types[i];
@@ -341,6 +346,19 @@ void Settings::load_build(const yaml &root)
             cxx_compiler_flags_conf[i] += " " + compiler_flags_conf[i];
         }
     }
+
+    // host
+    if (host_c_compiler.empty())
+        host_c_compiler = host_cxx_compiler;
+    if (host_c_compiler.empty())
+        host_c_compiler = host_compiler;
+    if (host_cxx_compiler.empty())
+        host_cxx_compiler = host_compiler;
+
+    if (host_c_compiler.empty())
+        host_c_compiler = c_compiler;
+    if (host_cxx_compiler.empty())
+        host_cxx_compiler = cxx_compiler;
 }
 
 bool Settings::is_custom_build_dir() const
@@ -373,6 +391,11 @@ String Settings::get_hash() const
     h |= use_shared_libs;
     h |= configuration;
     h |= default_configuration;
+
+    h |= crosscompilation;
+    h |= host_c_compiler;
+    h |= host_cxx_compiler;
+    h |= host_compiler;
 
     for (auto &o : env)
     {

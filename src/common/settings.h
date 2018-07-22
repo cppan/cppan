@@ -100,6 +100,13 @@ struct Settings
     String system_version;
     String toolset;
 
+    bool crosscompilation = false;
+    String host_c_compiler;
+    String host_cxx_compiler;
+    String host_compiler;
+    // wrap target fields into structure and add additional variable 'host' here?
+
+    //
     std::map<String, String> env;
     std::vector<String> cmake_options;
 

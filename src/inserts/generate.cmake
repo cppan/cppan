@@ -161,6 +161,9 @@ if (NOT EXISTS ${import} OR
         add_variable(GEN_CHILD_VARS NINJA)
         add_variable(GEN_CHILD_VARS NINJA_FOUND)
         add_variable(GEN_CHILD_VARS CLANG)
+        add_variable(GEN_CHILD_VARS CPPAN_CROSSCOMPILATION)
+        add_variable(GEN_CHILD_VARS CPPAN_HOST_C_COMPILER)
+        add_variable(GEN_CHILD_VARS CPPAN_HOST_CXX_COMPILER)
         write_variables_file(GEN_CHILD_VARS ${variables_file})
         #
 
@@ -171,24 +174,43 @@ if (NOT EXISTS ${import} OR
         # call cmake
         if (EXECUTABLE)# AND NOT CPPAN_BUILD_EXECUTABLES_WITH_SAME_CONFIG)
                 # build with the same compiler, generator and linker (in some cases)
-                cppan_debug_message("COMMAND ${CMAKE_COMMAND}
-                        -H${current_dir} -B${build_dir}
-                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                        ${linker}
-                        -DVARIABLES_FILE=${variables_file}
-                        -G \"${generator}\""
-                )
-                execute_process(
-                    COMMAND ${CMAKE_COMMAND}
-                        -H${current_dir} -B${build_dir}
-                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                        ${linker}
-                        -DVARIABLES_FILE=${variables_file}
-                        -G "${generator}"
-                    RESULT_VARIABLE ret
-                )
+                if (CPPAN_CROSSCOMPILATION)
+                    cppan_debug_message("COMMAND ${CMAKE_COMMAND}
+                            -H${current_dir} -B${build_dir}
+                            -DCMAKE_C_COMPILER=${CPPAN_HOST_C_COMPILER}
+                            -DCMAKE_CXX_COMPILER=${CPPAN_HOST_CXX_COMPILER}
+                            -DVARIABLES_FILE=${variables_file}
+                            -G \"${generator}\""
+                    )
+                    execute_process(
+                        COMMAND ${CMAKE_COMMAND}
+                            -H${current_dir} -B${build_dir}
+                            -DCMAKE_C_COMPILER=${CPPAN_HOST_C_COMPILER}
+                            -DCMAKE_CXX_COMPILER=${CPPAN_HOST_CXX_COMPILER}
+                            -DVARIABLES_FILE=${variables_file}
+                            -G "${generator}"
+                        RESULT_VARIABLE ret
+                    )
+                else()
+                    cppan_debug_message("COMMAND ${CMAKE_COMMAND}
+                            -H${current_dir} -B${build_dir}
+                            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                            ${linker}
+                            -DVARIABLES_FILE=${variables_file}
+                            -G \"${generator}\""
+                    )
+                    execute_process(
+                        COMMAND ${CMAKE_COMMAND}
+                            -H${current_dir} -B${build_dir}
+                            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                            ${linker}
+                            -DVARIABLES_FILE=${variables_file}
+                            -G "${generator}"
+                        RESULT_VARIABLE ret
+                    )
+                endif()
         else()
             if (CMAKE_TOOLCHAIN_FILE)
                 cppan_debug_message("COMMAND ${CMAKE_COMMAND}

@@ -1159,6 +1159,14 @@ if (MSVC)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
     endif()
 endif()
+
+if (NOT CPPAN_HOST_C_COMPILER)
+    set_cache_var(CPPAN_HOST_C_COMPILER ${CMAKE_C_COMPILER})
+endif()
+if (NOT CPPAN_HOST_CXX_COMPILER)
+    set_cache_var(CPPAN_HOST_CXX_COMPILER ${CMAKE_CXX_COMPILER})
+endif()
+
 )xxx");
 
     if (!s.install_prefix.empty())
@@ -1262,6 +1270,11 @@ int CMakePrinter::generate(const BuildSettings &bs) const
         c.args.push_back("-DCMAKE_C_COMPILER=" + s.c_compiler);
     if (!s.cxx_compiler.empty())
         c.args.push_back("-DCMAKE_CXX_COMPILER=" + s.cxx_compiler);
+    if (!s.host_c_compiler.empty())
+        c.args.push_back("-DCPPAN_HOST_C_COMPILER=" + s.host_c_compiler);
+    if (!s.host_cxx_compiler.empty())
+        c.args.push_back("-DCPPAN_HOST_CXX_COMPILER=" + s.host_cxx_compiler);
+    c.args.push_back("-DCPPAN_CROSSCOMPILATION="s + (s.crosscompilation ? "1" : "0"));
     if (!s.generator.empty())
     {
         c.args.push_back("-G");
@@ -3104,6 +3117,14 @@ if (VISUAL_STUDIO AND CLANG AND NINJA_FOUND AND NOT NINJA)
     #    message(FATAL_ERROR "CMAKE_LINKER must be set in order to accelerate clang build with MSVC!")
     #endif()
 endif()
+
+if (NOT CPPAN_HOST_C_COMPILER)
+    set_cache_var(CPPAN_HOST_C_COMPILER ${CMAKE_C_COMPILER})
+endif()
+if (NOT CPPAN_HOST_CXX_COMPILER)
+    set_cache_var(CPPAN_HOST_CXX_COMPILER ${CMAKE_CXX_COMPILER})
+endif()
+
 )xxx");
 
     // after all vars are set
