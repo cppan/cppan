@@ -1677,7 +1677,7 @@ void CMakePrinter::print_settings(CMakeContext &ctx) const
     ctx.addLine("set_cache_var(CPPAN_COMMAND 0)");
     ctx.endif();
     ctx.endif();
-    ctx.addLine("set_cache_var(CPPAN_COMMAND ${CPPAN_COMMAND}");
+    ctx.addLine("set_cache_var(CPPAN_COMMAND ${CPPAN_COMMAND})");
     ctx.addLine();
 
     if (p.static_only)
@@ -2151,6 +2151,9 @@ endif()
             ctx.addLine("PRIVATE   PACKAGE_URL=\"\"");
             ctx.addLine("PRIVATE   PACKAGE_COPYRIGHT_YEAR=2018"); // FIXME: take current year
             ctx.addLine("PRIVATE   PACKAGE_ROOT_DIR=\"" + normalize_path(d.ppath.is_loc() ? p.root_directory : d.getDirSrc()) + "\"");
+            // more
+            ctx.addLine("PRIVATE   PACKAGE_NAME_WITHOUT_OWNER=\"" + d.ppath.slice(2).toString() + "\"");
+            ctx.addLine("PRIVATE   PACKAGE_NAME_CLEAN=\"" + (d.ppath.is_loc() ? d.ppath.slice(2).toString() : d.ppath.toString()) + "\"");
             ctx.decreaseIndent(")");
         }
 
@@ -2162,8 +2165,14 @@ endif()
             // ?
             //ctx.addLine("PRIVATE   ${LIBRARY_API}"s + (d.flags[pfExecutable] ? "" : "=${CPPAN_EXPORT}"));
             ctx.addLine("PRIVATE   ${LIBRARY_API}=${CPPAN_EXPORT}");
+            ctx.addLine("PRIVATE   ${LIBRARY_API}_EXTERN=");
             if (!d.flags[pfExecutable])
+            {
                 ctx.addLine("INTERFACE ${LIBRARY_API}=${CPPAN_IMPORT}");
+                ctx.addLine("INTERFACE   ${LIBRARY_API}_EXTERN=extern");
+            }
+            else
+                ctx.addLine("PRIVATE CPPAN_EXECUTABLE");
         }
         else
         {
@@ -2363,7 +2372,10 @@ endif()
             api_names.insert(boost::to_upper_copy(!pp.empty() ? pp.toString("_") : p.pkg.ppath.back()) + "_API");
         }
         for (auto &a : api_names)
+        {
             ctx.addLine(visibility + " " + a + "=${LIBRARY_API}");
+            ctx.addLine(visibility + " " + a + "_EXTERN=${LIBRARY_API}_EXTERN");
+        }
         ctx.decreaseIndent(")");
         ctx.addLine();
 
