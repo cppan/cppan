@@ -2164,6 +2164,11 @@ endif()
             ctx.addLine("PRIVATE   PACKAGE_NAME_WITHOUT_OWNER=\"" + d.ppath.slice(2).toString() + "\"");
             ctx.addLine("PRIVATE   PACKAGE_NAME_CLEAN=\"" + (d.ppath.is_loc() ? d.ppath.slice(2).toString() : d.ppath.toString()) + "\"");
             ctx.decreaseIndent(")");
+
+            // other
+            ctx.increaseIndent("target_compile_definitions    (${this}");
+            ctx.addLine("PRIVATE   ${LIBRARY_API}_EXTERN=");
+            ctx.decreaseIndent(")");
         }
 
         // export/import
@@ -2174,11 +2179,10 @@ endif()
             // ?
             //ctx.addLine("PRIVATE   ${LIBRARY_API}"s + (d.flags[pfExecutable] ? "" : "=${CPPAN_EXPORT}"));
             ctx.addLine("PRIVATE   ${LIBRARY_API}=${CPPAN_EXPORT}");
-            ctx.addLine("PRIVATE   ${LIBRARY_API}_EXTERN=");
             if (!d.flags[pfExecutable])
             {
                 ctx.addLine("INTERFACE ${LIBRARY_API}=${CPPAN_IMPORT}");
-                ctx.addLine("INTERFACE   ${LIBRARY_API}_EXTERN=extern");
+                ctx.addLine("INTERFACE ${LIBRARY_API}_EXTERN=extern");
             }
             else
                 ctx.addLine("PRIVATE CPPAN_EXECUTABLE");
@@ -2201,6 +2205,7 @@ endif()
             else
                 // must be public
                 ctx.addLine("PUBLIC    ${LIBRARY_API}=");
+            ctx.addLine("INTERFACE ${LIBRARY_API}_EXTERN=");
         }
         else
             ctx.addLine("INTERFACE ${LIBRARY_API}=");

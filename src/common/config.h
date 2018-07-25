@@ -62,6 +62,7 @@ struct Config
 private:
     Projects projects;
     path dir; // cwd
+    String subdir; // for add_directories
 
     void addDefaultProject();
     Project &getProject1(const ProjectPath &ppath);

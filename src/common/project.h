@@ -278,6 +278,9 @@ public:
     // package processed is not in storage on client system
     bool is_local = true;
 
+    // for add_directories
+    String subdir;
+
     // private data
 private:
     // no files to compile

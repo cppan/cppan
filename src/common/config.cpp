@@ -141,7 +141,11 @@ void Config::load(const yaml &root)
     if (sd.IsDefined())
     {
         for (auto &d : get_sequence<path>(sd))
+        {
+            subdir = d.filename().string();
             reload(d);
+        }
+        subdir.clear();
     }
 
     load_settings(root);
@@ -153,16 +157,21 @@ void Config::load(const yaml &root)
     if (prjs.IsDefined() && !prjs.IsMap())
         throw std::runtime_error("'projects' should be a map");
 
-    auto add_project = [this, &root_project](auto &root, auto &&name)
+    auto add_project = [this, &root_project](auto &root, String name)
     {
         Project project(root_project);
         project.defaults_allowed = defaults_allowed;
         project.allow_relative_project_names = allow_relative_project_names;
         project.allow_local_dependencies = allow_local_dependencies;
         project.is_local = is_local;
+        project.subdir = subdir;
         project.load(root);
+        if (!subdir.empty())
+            name = subdir + "." + name;
         if (project.name.empty())
             project.name = name;
+        else if (!subdir.empty())
+            project.name = subdir + "." + project.name;
         project.setRelativePath(name);
         projects.emplace(project.pkg.ppath.toString(), project);
     };

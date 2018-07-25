@@ -614,7 +614,12 @@ ProjectPath Project::relative_name_to_absolute(const String &name)
 {
     ProjectPath ppath;
     if (name.empty())
-        return ppath;
+    {
+        if (subdir.empty())
+            return ppath;
+        else
+            return ppath = subdir;
+    }
     if (ProjectPath(name).is_relative())
     {
         auto ld = load_local_dependency(name);
@@ -623,13 +628,20 @@ ProjectPath Project::relative_name_to_absolute(const String &name)
         if (allow_relative_project_names)
         {
             //ppath.push_back(name);
-            ppath = name;
+            if (subdir.empty())
+                ppath = name;
+            else
+                ppath = subdir + "." + name;
             return ppath;
         }
         if (root_project.empty())
             throw std::runtime_error("You're using relative names, but 'root_project' is missing");
         // we split entered 'name' because it may contain dots also
-        ppath = root_project / ProjectPath(name);
+        if (subdir.empty())
+            ppath = root_project / ProjectPath(name);
+        else
+            // we do not split subdirs yet
+            ppath = root_project / subdir / ProjectPath(name);
     }
     else
         ppath = name;
