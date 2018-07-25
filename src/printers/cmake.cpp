@@ -2597,6 +2597,7 @@ void CMakePrinter::print_obj_config_file(const path &fn) const
         ctx.addLine();
         ctx.addLine("clear_once_variables()");
         ctx.addLine();
+        load_cppan_command(ctx);
         //if (!d.flags[pfLocalProject])
         {
             config_section_title(ctx, "read passed variables");
