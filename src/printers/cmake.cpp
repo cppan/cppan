@@ -2167,6 +2167,7 @@ endif()
 
             // other
             ctx.increaseIndent("target_compile_definitions    (${this}");
+            ctx.addLine("PRIVATE CPPAN_EXECUTABLE");
             ctx.addLine("PRIVATE   ${LIBRARY_API}_EXTERN=");
             ctx.decreaseIndent(")");
         }
@@ -2178,14 +2179,13 @@ endif()
         {
             // ?
             //ctx.addLine("PRIVATE   ${LIBRARY_API}"s + (d.flags[pfExecutable] ? "" : "=${CPPAN_EXPORT}"));
+            ctx.addLine("PRIVATE CPPAN_SHARED_BUILD");
             ctx.addLine("PRIVATE   ${LIBRARY_API}=${CPPAN_EXPORT}");
             if (!d.flags[pfExecutable])
             {
                 ctx.addLine("INTERFACE ${LIBRARY_API}=${CPPAN_IMPORT}");
                 ctx.addLine("INTERFACE ${LIBRARY_API}_EXTERN=extern");
             }
-            else
-                ctx.addLine("PRIVATE CPPAN_EXECUTABLE");
         }
         else
         {
@@ -2198,6 +2198,7 @@ endif()
         ctx.increaseIndent("target_compile_definitions    (${this}");
         if (!d.flags[pfHeaderOnly])
         {
+            ctx.addLine("PRIVATE CPPAN_STATIC_BUILD");
             if (p.export_if_static)
                 // must be public, because when exporting from exe
                 // dllexport must be both in library and exe
