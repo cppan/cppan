@@ -552,10 +552,15 @@ auto library_api(const Package &d)
     return CPPAN_EXPORT_PREFIX + d.variable_name;
 }
 
+void load_cppan_command_unconditionally(CMakeContext &ctx)
+{
+    ctx.addLine("include(\"" + normalize_path(directories.get_static_files_dir() / cmake_cppan_location_filename) + "\")");
+}
+
 void load_cppan_command(CMakeContext &ctx)
 {
     ctx.if_("NOT CPPAN_COMMAND");
-    ctx.addLine("include(\"" + normalize_path(directories.get_static_files_dir() / cmake_cppan_location_filename) + "\")");
+    load_cppan_command_unconditionally(ctx);
     ctx.endif();
     ctx.addLine();
 }
@@ -2597,7 +2602,7 @@ void CMakePrinter::print_obj_config_file(const path &fn) const
         ctx.addLine();
         ctx.addLine("clear_once_variables()");
         ctx.addLine();
-        load_cppan_command(ctx);
+        load_cppan_command_unconditionally(ctx);
         //if (!d.flags[pfLocalProject])
         {
             config_section_title(ctx, "read passed variables");

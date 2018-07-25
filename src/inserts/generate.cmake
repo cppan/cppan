@@ -147,7 +147,6 @@ if (NOT EXISTS ${import} OR
         #add_variable(GEN_CHILD_VARS CPPAN_BUILD_EXECUTABLES_WITH_SAME_CONFIG)
         # if turned on, build exe with the same configiguration (debug, relwithdebinfo etc.)
         add_variable(GEN_CHILD_VARS CPPAN_BUILD_EXECUTABLES_WITH_SAME_CONFIGURATION)
-        add_variable(GEN_CHILD_VARS CPPAN_COMMAND)
         if (NOT EXECUTABLE)
             add_variable(GEN_CHILD_VARS CPPAN_MT_BUILD) # not for exe
         endif()
