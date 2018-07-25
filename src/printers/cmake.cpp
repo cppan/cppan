@@ -69,6 +69,7 @@ const String parallel_checks_file = "vars.txt";
 const String cmake_src_actions_filename = "actions.cmake";
 const String cmake_src_include_guard_filename = "include.cmake";
 
+const String cmake_cppan_location_filename = "cppan_location.cmake";
 const String cmake_obj_build_filename = "build.cmake";
 const String cmake_obj_generate_filename = "generate.cmake";
 const String cmake_obj_exports_filename = "exports.cmake";
@@ -549,6 +550,14 @@ auto run_command(const Settings &bs, primitives::Command &c)
 auto library_api(const Package &d)
 {
     return CPPAN_EXPORT_PREFIX + d.variable_name;
+}
+
+void load_cppan_command(CMakeContext &ctx)
+{
+    ctx.if_("NOT CPPAN_COMMAND");
+    ctx.addLine("include(\"" + normalize_path(directories.get_static_files_dir() / cmake_cppan_location_filename) + "\")");
+    ctx.endif();
+    ctx.addLine();
 }
 
 void CMakePrinter::print_build_dependencies(CMakeContext &ctx, const String &target) const
@@ -1288,11 +1297,6 @@ int CMakePrinter::generate(const BuildSettings &bs) const
         c.args.push_back(s.toolset);
     }
     c.args.push_back("-DCMAKE_BUILD_TYPE=" + s.configuration);
-#ifdef CPPAN_CLIENT
-    c.args.push_back("-DCPPAN_COMMAND=" + normalize_path(get_program()));
-#else
-    c.args.push_back("-DCPPAN_COMMAND=cppan");
-#endif
     if (s.debug_generated_cmake_configs)
         c.args.push_back("-DCPPAN_CMAKE_VERBOSE="s + (s.cmake_verbose ? "1" : "0"));
     c.args.push_back("-DCPPAN_BUILD_VERBOSE="s + (s.build_system_verbose ? "1" : "0"));
@@ -1464,6 +1468,14 @@ void CMakePrinter::print_meta() const
         "set(CPPAN_CONFIG_PART_DELIMETER -)\n"
         "\n"
         + cmake_functions);
+
+    String loc;
+#ifdef CPPAN_CLIENT
+    loc = "set_cache_var(CPPAN_COMMAND \"" + normalize_path(get_program()) + "\")";
+#else
+    loc = "set_cache_var(CPPAN_COMMAND cppan)";
+#endif
+    access_table->write_if_older(directories.get_static_files_dir() / cmake_cppan_location_filename, loc);
 
     access_table->write_if_older(directories.get_static_files_dir() / cmake_header_filename, cmake_header);
     access_table->write_if_older(directories.get_static_files_dir() / cmake_export_import_filename, cmake_export_import_file);
@@ -1670,15 +1682,7 @@ void CMakePrinter::print_settings(CMakeContext &ctx) const
         ctx.addLine();
     }
 
-    ctx.if_("NOT CPPAN_COMMAND");
-    ctx.addLine("find_program(CPPAN_COMMAND cppan)");
-    ctx.if_("\"${CPPAN_COMMAND}\" STREQUAL \"CPPAN_COMMAND-NOTFOUND\"");
-    ctx.addLine("message(WARNING \"'cppan' program was not found. Please, add it to PATH environment variable\")");
-    ctx.addLine("set_cache_var(CPPAN_COMMAND 0)");
-    ctx.endif();
-    ctx.endif();
-    ctx.addLine("set_cache_var(CPPAN_COMMAND ${CPPAN_COMMAND})");
-    ctx.addLine();
+    load_cppan_command(ctx);
 
     if (p.static_only)
         ctx.addLine("set(LIBRARY_TYPE STATIC)");
@@ -3075,15 +3079,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON))");
     config_section_title(ctx, "variables");
     if (d.empty())
     {
-        ctx.if_("NOT CPPAN_COMMAND");
-        ctx.addLine("find_program(CPPAN_COMMAND cppan)");
-        ctx.if_("\"${CPPAN_COMMAND}\" STREQUAL \"CPPAN_COMMAND-NOTFOUND\"");
-        ctx.addLine("message(WARNING \"'cppan' program was not found. Please, add it to PATH environment variable\")");
-        ctx.addLine("set_cache_var(CPPAN_COMMAND 0)");
-        ctx.endif();
-        ctx.endif();
-        ctx.addLine("set_cache_var(CPPAN_COMMAND ${CPPAN_COMMAND})");
-        ctx.addLine();
+        load_cppan_command(ctx);
     }
     ctx.addLine(R"xxx(
 set_cache_var(XCODE 0)
