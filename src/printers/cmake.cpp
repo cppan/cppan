@@ -2168,7 +2168,7 @@ endif()
             // other
             ctx.increaseIndent("target_compile_definitions    (${this}");
             ctx.addLine("PRIVATE CPPAN_EXECUTABLE");
-            ctx.addLine("PRIVATE   ${LIBRARY_API}_EXTERN=");
+            ctx.addLine("PRIVATE ${LIBRARY_API}_EXTERN=");
             ctx.decreaseIndent(")");
         }
 
@@ -2206,7 +2206,7 @@ endif()
             else
                 // must be public
                 ctx.addLine("PUBLIC    ${LIBRARY_API}=");
-            ctx.addLine("INTERFACE ${LIBRARY_API}_EXTERN=");
+            ctx.addLine("INTERFACE ${LIBRARY_API}_EXTERN=extern");
         }
         else
             ctx.addLine("INTERFACE ${LIBRARY_API}=");
