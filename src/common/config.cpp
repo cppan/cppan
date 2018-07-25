@@ -138,6 +138,7 @@ void Config::load(const yaml &root)
 
     // load subdirs
     auto sd = root["add_directories"];
+    decltype(projects) subdir_projects;
     if (sd.IsDefined())
     {
         for (auto &d : get_sequence<path>(sd))
@@ -146,6 +147,7 @@ void Config::load(const yaml &root)
             reload(d);
         }
         subdir.clear();
+        subdir_projects = std::move(projects);
     }
 
     load_settings(root);
@@ -166,13 +168,12 @@ void Config::load(const yaml &root)
         project.is_local = is_local;
         project.subdir = subdir;
         project.load(root);
-        if (!subdir.empty())
-            name = subdir + "." + name;
         if (project.name.empty())
             project.name = name;
-        else if (!subdir.empty())
-            project.name = subdir + "." + project.name;
         project.setRelativePath(name);
+        // after setRelativePath()
+        if (!subdir.empty())
+            project.name = subdir + "." + project.name;
         projects.emplace(project.pkg.ppath.toString(), project);
     };
 
@@ -184,6 +185,31 @@ void Config::load(const yaml &root)
     else
     {
         add_project(root, "");
+    }
+
+    // remove unreferences projects
+    if (sd.IsDefined())
+    {
+        while (1)
+        {
+            bool added = false;
+            decltype(projects) included_projects;
+            for (auto &[pkg, p] : projects)
+            {
+                for (auto &[n, p2] : p.dependencies)
+                {
+                    auto i = subdir_projects.find(n);
+                    if (i != subdir_projects.end() && projects.find(n) == projects.end())
+                    {
+                        included_projects.insert(*i);
+                        added = true;
+                    }
+                }
+            }
+            projects.insert(included_projects.begin(), included_projects.end());
+            if (!added)
+                break;
+        }
     }
 }
 
