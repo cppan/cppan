@@ -1223,8 +1223,10 @@ function(cppan_flex_bison_internal lexer)
     set(bdir ${BDIR_PRIVATE}/fb)
 
     if (NOT WIN32)
-        set(flex flex)
-        set(bison bison)
+        find_package(FLEX REQUIRED)
+        find_package(BISON REQUIRED 3.0)
+        set(bison ${BISON_EXECUTABLE})
+        set(flex ${FLEX_EXECUTABLE})
     endif()
 
     # parsers
