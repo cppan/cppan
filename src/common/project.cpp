@@ -812,6 +812,7 @@ void Project::load(const yaml &root)
 
         auto read_single_dep = [this, &read_version](const auto &d, Package dependency = Package())
         {
+            bool local_ok = false;
             if (d.IsScalar())
             {
                 auto p = extractFromStringAny(d.template as<String>());
@@ -834,39 +835,13 @@ void Project::load(const yaml &root)
                 }
                 if (d["local"].IsDefined() && allow_local_dependencies)
                 {
-                    // WARNING!
-                    // probably this could be dangerous, maybe remove?
-                    // if set local dep for a secure file on the system
-                    // it will be read (or not?); how this affects system?
-                    // will not lead to exec shell code somehow or whatever?
-                    // ???
-                    auto lp = d["local"].template as<String>();
-                    auto ld = this->load_local_dependency(lp);
-                    if (!ld)
-                    {
-                        if (!dependency.ppath.empty() && !dependency.ppath.is_loc())
-                        {
-                            try
-                            {
-                                Packages p;
-                                p[dependency.ppath.toString()] = dependency;
-                                resolve_dependencies(p);
-                            }
-                            catch (const std::exception &)
-                            {
-                                // if not resolved, fail finally
-                                throw;
-                            }
-                        }
-
-                        if (dependency.ppath.empty())
-                            throw std::runtime_error("Could not load local project: " + lp);
-                    }
-
-                    if (dependency.ppath.is_relative() && rd.has_local_package(ld.value() / dependency.ppath))
-                        dependency.ppath = ld.value() / dependency.ppath;
-                    else // is this really needed?
-                        dependency.ppath = ld.value();
+                    auto p = d["local"].template as<String>();
+                    Package pkg;
+                    pkg.ppath = p;
+                    if (rd.known_local_packages.find(pkg) != rd.known_local_packages.end())
+                        local_ok = true;
+                    if (local_ok)
+                        dependency.ppath = p;
                 }
             }
 
@@ -886,7 +861,11 @@ void Project::load(const yaml &root)
             {
                 // read other map fields
                 if (d["version"].IsDefined())
+                {
                     read_version(dependency, d["version"].template as<String>());
+                    if (local_ok)
+                        dependency.version = Version(LOCAL_VERSION_NAME);
+                }
                 if (d["ref"].IsDefined())
                     dependency.reference = d["ref"].template as<String>();
                 if (d["reference"].IsDefined())

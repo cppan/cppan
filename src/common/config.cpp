@@ -143,11 +143,15 @@ void Config::load(const yaml &root)
     {
         for (auto &d : get_sequence<path>(sd))
         {
+            if (!fs::exists(d))
+                continue;
             subdir = d.filename().string();
             reload(d);
         }
         subdir.clear();
         subdir_projects = std::move(projects);
+        for (auto &[s,p] : subdir_projects)
+            rd.known_local_packages.insert(p.pkg);
     }
 
     load_settings(root);

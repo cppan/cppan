@@ -427,6 +427,9 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
         // allow relative project names
         c.allow_relative_project_names = true;
 
+        // allow loading local deps from subdirs
+        c.allow_local_dependencies = true;
+
         c.reload(p);
         return c;
     };

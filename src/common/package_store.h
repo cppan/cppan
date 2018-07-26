@@ -66,6 +66,9 @@ public:
     bool empty() const { return packages.empty(); }
     size_t size() const { return packages.size(); }
 
+public:
+    std::unordered_set<Package> known_local_packages;
+
 private:
     PackageConfigs packages;
     std::set<std::unique_ptr<Config>> config_store;
