@@ -1778,7 +1778,7 @@ void CMakePrinter::print_src_config_file(const path &fn) const
         }
         else if (p.build_files.empty())
         {
-            ctx.addLine("file(GLOB_RECURSE src \"*\")");
+            ctx.addLine("file(GLOB_RECURSE src \"${SDIR}/*\")");
         }
         else
         {
