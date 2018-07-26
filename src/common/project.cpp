@@ -622,9 +622,6 @@ ProjectPath Project::relative_name_to_absolute(const String &name)
     }
     if (ProjectPath(name).is_relative())
     {
-        auto ld = load_local_dependency(name);
-        if (ld)
-            return ld.value();
         if (allow_relative_project_names)
         {
             //ppath.push_back(name);
@@ -646,20 +643,6 @@ ProjectPath Project::relative_name_to_absolute(const String &name)
     else
         ppath = name;
     return ppath;
-}
-
-optional<ProjectPath> Project::load_local_dependency(const String &name)
-{
-    optional<ProjectPath> pp;
-    if (allow_local_dependencies && (fs::exists(current_thread_path() / name) || isUrl(name)))
-    {
-        PackagesSet pkgs;
-        Config c;
-        String n;
-        std::tie(pkgs, c, n) = rd.read_packages_from_file(name);
-        pp = c.pkg.ppath;
-    }
-    return pp;
 }
 
 void Project::load(const yaml &root)

@@ -320,7 +320,6 @@ private:
 
     const Files &getSources() const;
     ProjectPath relative_name_to_absolute(const String &name);
-    optional<ProjectPath> load_local_dependency(const String &name);
 };
 
 using Projects = std::map<String, Project>;
