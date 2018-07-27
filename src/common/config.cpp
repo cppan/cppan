@@ -141,17 +141,54 @@ void Config::load(const yaml &root)
     decltype(projects) subdir_projects;
     if (sd.IsDefined())
     {
-        for (auto &d : get_sequence<path>(sd))
+        decltype(projects) all_projects;
+        for (const auto &kv : sd)
         {
-            if (!fs::exists(d))
-                continue;
-            subdir = d.filename().string();
-            reload(d);
+            auto load_specific = [this, &kv, &subdir_projects]()
+            {
+                path d = kv.as<String>();
+                if (!fs::exists(d))
+                    return;
+
+                subdir = d.filename().string();
+                reload(d);
+                subdir.clear();
+
+                for (auto &[s, p] : projects)
+                    rd.known_local_packages.insert(p.pkg);
+
+                subdir_projects.insert(projects.begin(), projects.end());
+                projects.clear();
+            };
+
+            if (kv.IsScalar())
+                load_specific();
+            else if (kv.IsMap())
+            {
+                path d;
+                if (kv["dir"].IsDefined())
+                    d = kv["dir"].as<String>();
+                else if (kv["directory"].IsDefined())
+                    d = kv["directory"].as<String>();
+                if (!fs::exists(d))
+                    return;
+                if (kv["load_all_packages"].IsDefined() && kv["load_all_packages"].as<bool>())
+                {
+                    subdir = d.filename().string();
+                    reload(d);
+                    subdir.clear();
+
+                    for (auto &[s, p] : projects)
+                        rd.known_local_packages.insert(p.pkg);
+
+                    all_projects.insert(projects.begin(), projects.end());
+                    projects.clear();
+                }
+                else
+                    load_specific();
+            }
         }
-        subdir.clear();
-        subdir_projects = std::move(projects);
-        for (auto &[s,p] : subdir_projects)
-            rd.known_local_packages.insert(p.pkg);
+        projects = all_projects;
     }
 
     load_settings(root);
