@@ -186,6 +186,7 @@ void Config::load(const yaml &root)
                 }
                 else
                     load_specific();
+                // add skip option? - skip specific
             }
         }
         projects = all_projects;

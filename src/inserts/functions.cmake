@@ -1191,7 +1191,9 @@ endmacro()
 macro(cppan_ragel f)
     set(i ${SDIR}/${f})
     set(o ${BDIR_PRIVATE}/${f}.cpp)
+    get_filename_component(dir ${o} DIRECTORY)
     add_custom_command(OUTPUT ${o}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
         COMMAND pvt.cppan.demo.ragel ${i} -o ${o}
         DEPENDS ${i}
     )
@@ -1205,7 +1207,9 @@ endmacro()
 macro(cppan_re2c f ext)
     set(i ${SDIR}/${f})
     set(o ${BDIR_PRIVATE}/${f}.${ext})
+    get_filename_component(dir ${o} DIRECTORY)
     add_custom_command(OUTPUT ${o}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
         COMMAND pvt.cppan.demo.re2c.re2c -o ${o} ${i}
         DEPENDS ${i}
     )
