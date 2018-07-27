@@ -1325,7 +1325,6 @@ macro(cppan_generate_flex_bison_config)
 
     add_custom_command(OUTPUT ${parser_include}
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${parser_include_in} ${parser_include}
-        DEPENDS ${parser_include_in}
     )
     target_sources(${this} PRIVATE ${parser_include})
 
