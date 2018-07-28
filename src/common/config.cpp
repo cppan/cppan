@@ -150,9 +150,10 @@ void Config::load(const yaml &root)
                 if (!fs::exists(d))
                     return;
 
+                auto tmp = subdir;
                 subdir = d.filename().string();
                 reload(d);
-                subdir.clear();
+                subdir = tmp;
 
                 for (auto &[s, p] : projects)
                     rd.known_local_packages.insert(p.pkg);
@@ -174,9 +175,10 @@ void Config::load(const yaml &root)
                     return;
                 if (kv["load_all_packages"].IsDefined() && kv["load_all_packages"].as<bool>())
                 {
+                    auto tmp = subdir;
                     subdir = d.filename().string();
                     reload(d);
-                    subdir.clear();
+                    subdir = tmp;
 
                     for (auto &[s, p] : projects)
                         rd.known_local_packages.insert(p.pkg);

@@ -1288,7 +1288,8 @@ int CMakePrinter::generate(const BuildSettings &bs) const
         c.args.push_back("-DCPPAN_HOST_C_COMPILER=" + s.host_c_compiler);
     if (!s.host_cxx_compiler.empty())
         c.args.push_back("-DCPPAN_HOST_CXX_COMPILER=" + s.host_cxx_compiler);
-    c.args.push_back("-DCPPAN_CROSSCOMPILATION="s + (s.crosscompilation ? "1" : "0"));
+    if (s.crosscompilation)
+        c.args.push_back("-DCPPAN_CROSSCOMPILATION="s + (s.crosscompilation ? "1" : "0"));
     if (!s.generator.empty())
     {
         c.args.push_back("-G");
