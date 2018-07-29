@@ -1180,8 +1180,32 @@ macro(cppan_genpb f)
             ${BDIR}/${n}.pb.h
         COMMAND
             pvt.cppan.demo.google.protobuf.protoc ${f} --cpp_out=${BDIR}/${d2} -I ${d}
+        DEPENDS ${f}
     )
     set(src ${src} ${BDIR}/${n}.pb.cc ${BDIR}/${n}.pb.h)
+endmacro()
+
+########################################
+# MACRO cppan_grpc
+########################################
+
+macro(cppan_grpc f)
+    cppan_genpb(${f})
+
+    get_filename_component(n ${f} NAME_WE)
+    get_filename_component(d ${f} DIRECTORY)
+    string(REPLACE "${SDIR}" "" d2 "${d}")
+    set(n ${d2}/${n})
+    add_custom_command(
+        OUTPUT
+            ${BDIR}/${n}.grpc.pb.cc
+            ${BDIR}/${n}.grpc.pb.h
+        COMMAND
+            pvt.cppan.demo.google.protobuf.protoc ${f} --grpc_out=${BDIR}/${d2} -I ${d}
+            --plugin=protoc-gen-grpc=$<TARGET_FILE:${grpc_cpp_plugin}>
+        DEPENDS ${f}
+    )
+    set(src ${src} ${BDIR}/${n}.grpc.pb.cc ${BDIR}/${n}.grpc.pb.h)
 endmacro()
 
 ########################################
