@@ -2168,7 +2168,8 @@ endif()
 
             // other
             ctx.increaseIndent("target_compile_definitions    (${this}");
-            ctx.addLine("PRIVATE CPPAN_EXECUTABLE");
+            if (d.flags[pfExecutable])
+                ctx.addLine("PRIVATE CPPAN_EXECUTABLE");
             ctx.addLine("PRIVATE ${LIBRARY_API}_EXTERN=");
             ctx.decreaseIndent(")");
         }
