@@ -364,6 +364,17 @@ String get_binary_path(const Package &d)
     return get_binary_path(d, "${CMAKE_BINARY_DIR}");
 }
 
+void gather_all_deps(const Packages &dd, Packages &out)
+{
+    for (auto &dp : dd)
+    {
+        auto &d = dp.second;
+        auto i = out.insert(dp);
+        if (i.second)
+            gather_all_deps(rd[d].dependencies, out);
+    }
+}
+
 void print_dependencies(CMakeContext &ctx, const Package &d, bool use_cache)
 {
     const auto &dd = rd[d].dependencies;
@@ -496,7 +507,23 @@ void print_dependencies(CMakeContext &ctx, const Package &d, bool use_cache)
     CMakeContext ctx_includes;
     bool print_includes = false;
     config_section_title(ctx_includes, "include scripts");
-    for (auto &p : dd)
+    auto &all_deps = rd[d].include_script_deps;
+    if (!all_deps)
+    {
+        all_deps.emplace();
+        gather_all_deps(dd, all_deps.value());
+        Packages real_values;
+        for (auto &p : all_deps.value())
+        {
+            auto &dep = p.second;
+
+            if (rd[dep].config->getDefaultProject().include_script.empty())
+                continue;
+            real_values.insert(p);
+        }
+        all_deps = real_values;
+    }
+    for (auto &p : all_deps.value())
     {
         auto &dep = p.second;
 
@@ -1796,6 +1823,25 @@ void CMakePrinter::print_src_config_file(const path &fn) const
     print_dependencies(ctx, d, Settings::get_local_settings().use_cache);
     print_settings(ctx);
 
+    // add target early
+    // target
+    {
+        config_section_title(ctx, "target: " + d.target_name);
+        if (d.flags[pfExecutable])
+        {
+            ctx.addLine("add_executable                (${this} " +
+                String(p.executable_type == ExecutableType::Win32 ? "WIN32" : "") + ")");
+        }
+        else
+        {
+            if (d.flags[pfHeaderOnly])
+                ctx.addLine("add_library                   (${this} INTERFACE)");
+            else
+                ctx.addLine("add_library                   (${this} ${LIBRARY_TYPE})");
+        }
+        ctx.addLine();
+    }
+
     config_section_title(ctx, "export/import");
     ctx.addLine("include(\"" + normalize_path(directories.get_static_files_dir() / cmake_export_import_filename) + "\")");
 
@@ -1903,21 +1949,11 @@ if (DEFINED CPPAN_BUILD_WARNING_LEVEL AND
 endif()
 )");
 
-    // target
+    // target sources
     {
-        config_section_title(ctx, "target: " + d.target_name);
-        if (d.flags[pfExecutable])
-        {
-            ctx.addLine("add_executable                (${this} " +
-                String(p.executable_type == ExecutableType::Win32 ? "WIN32" : "") + " ${src})");
-        }
-        else
-        {
-            if (d.flags[pfHeaderOnly])
-                ctx.addLine("add_library                   (${this} INTERFACE)");
-            else
-                ctx.addLine("add_library                   (${this} ${LIBRARY_TYPE} ${src})");
-        }
+        config_section_title(ctx, "target sources: " + d.target_name);
+        if (!d.flags[pfHeaderOnly])
+            ctx.addLine("target_sources(${this} PRIVATE ${src})");
         ctx.addLine();
     }
 
@@ -2630,7 +2666,13 @@ void CMakePrinter::print_obj_config_file(const path &fn) const
     const auto &p = rd[d].config->getDefaultProject();
 
     if (!p.include_script.empty())
-        write_file_if_different(d.getDirObj() / cmake_obj_include_script_filename, p.include_script);
+    {
+        CMakeContext ctx;
+        auto s = p.include_script;
+        boost::replace_all(s, "$<CPPAN_THIS_PACKAGE>", d.target_name);
+        ctx.addLine(s);
+        write_file_if_different(d.getDirObj() / cmake_obj_include_script_filename, ctx.getText());
+    }
 
     CMakeContext ctx;
     file_header(ctx, d);

@@ -19,6 +19,8 @@
 #include "cppan_string.h"
 #include "dependency.h"
 
+#include <primitives/stdcompat/optional.h>
+
 struct Config;
 class ProjectPath;
 
@@ -29,6 +31,9 @@ public:
     {
         Config *config;
         Packages dependencies;
+
+        // cache
+        optional<Packages> include_script_deps;
     };
     using PackageConfigs = std::unordered_map<Package, PackageConfig>;
 
