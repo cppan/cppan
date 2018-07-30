@@ -7,10 +7,10 @@ BUILD_TYPE=-DCMAKE_BUILD_TYPE=Release
 OPTIONS=
 
 function base() {
-#echo "Setup:"
-#echo "COMPILER=$COMPILER"
-#echo "GENERATOR=$GENERATOR"
-#echo "BDIR=$BDIR"
+    #echo "Setup:"
+    #echo "COMPILER=$COMPILER"
+    #echo "GENERATOR=$GENERATOR"
+    #echo "BDIR=$BDIR"
 
     cmake -H. -B$BDIR \
         -DBISON_EXECUTABLE=/usr/local/Cellar/bison/3.0.4_1/bin/bison \
@@ -28,14 +28,15 @@ function xcode() {
     OPTIONS="-DCPPAN_USE_CACHE=0"
 }
 
-function gcc7() {
-    BDIR="${BDIR}_gcc7"
-    COMPILER="-DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7"
+function gcc() {
+    BDIR="${BDIR}_gcc8"
+    COMPILER="-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8"
 }
 
-function clang5() {
+function clang() {
     BDIR="${BDIR}_clang"
-    COMPILER="-DCMAKE_C_COMPILER=clang-5.0 -DCMAKE_CXX_COMPILER=clang-5.0"
+    CLANG=/usr/local/Cellar/llvm/6.0.0/bin/clang-6.0
+    COMPILER="-DCMAKE_C_COMPILER=$CLANG -DCMAKE_CXX_COMPILER=$CLANG"
 }
 
 function ninja() {
@@ -49,7 +50,7 @@ function debug() {
 }
 
 function release() {
-#BDIR="${BDIR}_release"
+    #BDIR="${BDIR}_release"
     BUILD_TYPE=-DCMAKE_BUILD_TYPE=Release
 }
 
@@ -58,3 +59,5 @@ for i in "$@"; do
 done
 
 base
+
+echo $BDIR
