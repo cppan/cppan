@@ -1769,6 +1769,7 @@ void CMakePrinter::print_src_config_file(const path &fn) const
 
     // variables for target
     ctx.addLine("set(this " + d.target_name_hash + ")");
+    ctx.addLine("set(this_fullname " + d.target_name + ")");
     ctx.addLine("set(this_variable " + d.variable_name + ")");
     ctx.addLine();
 
