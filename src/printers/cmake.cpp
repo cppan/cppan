@@ -511,9 +511,10 @@ void print_dependencies(CMakeContext &ctx, const Package &d, bool use_cache)
     if (!all_deps)
     {
         all_deps.emplace();
-        gather_all_deps(dd, all_deps.value());
-        Packages real_values;
-        for (auto &p : all_deps.value())
+        Packages out;
+        gather_all_deps(dd, out);
+        StringMap<Package> real_values;
+        for (auto &p : out)
         {
             auto &dep = p.second;
 
@@ -533,6 +534,12 @@ void print_dependencies(CMakeContext &ctx, const Package &d, bool use_cache)
         ScopedDependencyCondition sdc(ctx_includes, dep);
         ctx_includes.addLine("# " + dep.target_name + "\n" +
             "include(" + normalize_path(dep.getDirObj()) + "/" + cmake_obj_include_script_filename + ")");
+    }
+    if (!rd[d].config->getDefaultProject().include_script.empty())
+    {
+        // print self script
+        ctx_includes.addLine("# " + d.target_name + "\n" +
+            "include(" + normalize_path(d.getDirObj()) + "/" + cmake_obj_include_script_filename + ")");
     }
     if (print_includes)
         ctx += ctx_includes;
@@ -2669,7 +2676,10 @@ void CMakePrinter::print_obj_config_file(const path &fn) const
     {
         CMakeContext ctx;
         auto s = p.include_script;
+        boost::replace_all(s, "$<CPPAN_THIS_PACKAGE_SDIR>", normalize_path(d.getDirSrc()));
         boost::replace_all(s, "$<CPPAN_THIS_PACKAGE>", d.target_name);
+        ctx.addLine("include_guard(GLOBAL)");
+        ctx.addLine();
         ctx.addLine(s);
         write_file_if_different(d.getDirObj() / cmake_obj_include_script_filename, ctx.getText());
     }

@@ -33,7 +33,7 @@ public:
         Packages dependencies;
 
         // cache
-        optional<Packages> include_script_deps;
+        optional<StringMap<Package>> include_script_deps;
     };
     using PackageConfigs = std::unordered_map<Package, PackageConfig>;
 
