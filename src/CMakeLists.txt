@@ -64,7 +64,7 @@ set(gen_src
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/inserts.cpp
     COMMAND pvt.egorpugin.primitives.embedder ${CMAKE_CURRENT_SOURCE_DIR}/inserts/inserts.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/inserts.cpp
     DEPENDS pvt.egorpugin.primitives.embedder ${gen_src}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/inserts
 )
 
 add_executable(stamp_genenerator gen/stamp_gen.cpp)
