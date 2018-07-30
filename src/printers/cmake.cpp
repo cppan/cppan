@@ -73,6 +73,7 @@ const String cmake_cppan_location_filename = "cppan_location.cmake";
 const String cmake_obj_build_filename = "build.cmake";
 const String cmake_obj_generate_filename = "generate.cmake";
 const String cmake_obj_exports_filename = "exports.cmake";
+const String cmake_obj_include_script_filename = "include_script.cmake";
 
 const String cmake_minimum_required = "cmake_minimum_required(VERSION 3.2.0)";
 const String cmake_debug_message_fun = "cppan_debug_message";
@@ -477,8 +478,37 @@ void print_dependencies(CMakeContext &ctx, const Package &d, bool use_cache)
         }*/
     }
 
+    for (auto &p : dd)
+    {
+        auto &dep = p.second;
+
+        ScopedDependencyCondition sdc(ctx, dep);
+        if (dep.flags[pfLocalProject])
+            ctx.addLine("set_cache_var(" + dep.variable_no_version_name + "_DIR " + normalize_path(rd[dep].config->getDefaultProject().root_directory) + ")");
+        else
+            ctx.addLine("set_cache_var(" + dep.variable_no_version_name + "_DIR " + normalize_path(dep.getDirSrc()) + ")");
+    }
+
     // after all deps
     ctx += ctx_actions;
+
+    // include scripts
+    CMakeContext ctx_includes;
+    bool print_includes = false;
+    config_section_title(ctx_includes, "include scripts");
+    for (auto &p : dd)
+    {
+        auto &dep = p.second;
+
+        if (rd[dep].config->getDefaultProject().include_script.empty())
+            continue;
+        print_includes = true;
+        ScopedDependencyCondition sdc(ctx_includes, dep);
+        ctx_includes.addLine("# " + dep.target_name + "\n" +
+            "include(" + normalize_path(dep.getDirObj()) + "/" + cmake_obj_include_script_filename + ")");
+    }
+    if (print_includes)
+        ctx += ctx_includes;
 
     ctx.splitLines();
 }
@@ -2597,6 +2627,9 @@ void CMakePrinter::print_obj_config_file(const path &fn) const
         return;
 
     const auto &p = rd[d].config->getDefaultProject();
+
+    if (!p.include_script.empty())
+        write_file_if_different(d.getDirObj() / cmake_obj_include_script_filename, p.include_script);
 
     CMakeContext ctx;
     file_header(ctx, d);

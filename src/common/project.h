@@ -205,6 +205,7 @@ public:
 
     Packages dependencies;
     BuildSystemConfigInsertions bs_insertions;
+    String include_script;
     OptionsMap options;
     Patch patch;
     StringSet aliases;

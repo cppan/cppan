@@ -199,6 +199,7 @@ String dump_yaml_config(const yaml &root)
         "dependencies", // move above options?
 
         "patch",
+        "include_script",
     };
 
     Strings end;

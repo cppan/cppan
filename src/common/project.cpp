@@ -678,6 +678,7 @@ void Project::load(const yaml &root)
 
     YAML_EXTRACT_AUTO(output_name);
     YAML_EXTRACT_AUTO(condition);
+    YAML_EXTRACT_AUTO(include_script);
 
     // standards
     {
@@ -1244,6 +1245,7 @@ yaml Project::save() const
 
     ADD_IF_NOT_EMPTY(output_name);
     ADD_IF_NOT_EMPTY(condition);
+    ADD_IF_NOT_EMPTY(include_script);
 
     if (c_standard)
         root["c"] = c_standard;
