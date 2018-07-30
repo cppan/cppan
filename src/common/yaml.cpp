@@ -199,7 +199,6 @@ String dump_yaml_config(const yaml &root)
         "dependencies", // move above options?
 
         "patch",
-        "include_script",
     };
 
     Strings end;
@@ -210,6 +209,7 @@ String dump_yaml_config(const yaml &root)
     }
 
     Strings literal = BuildSystemConfigInsertions::getStrings();
+    literal.push_back("include_script");
 
     std::set<String> keys;
     keys.insert(begin.begin(), begin.end());
