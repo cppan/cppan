@@ -1085,6 +1085,7 @@ function(cppan_flex_bison_internal lexer)
         target_sources(${this} PRIVATE
             ${d}/${name}.cpp
             ${d}/${name}.hpp
+            ${SDIR}/${parser}
         )
 
         set(parser_headers ${parser_headers} ${d}/${name}.hpp)
@@ -1107,6 +1108,7 @@ function(cppan_flex_bison_internal lexer)
     target_sources(${this} PRIVATE
         ${bdir}/${lexer}.cpp
         #${bdir}/${lexer}.h
+        ${SDIR}/${lexer}
     )
 endfunction()
 

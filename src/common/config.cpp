@@ -142,15 +142,14 @@ void Config::load(const yaml &root)
     if (sd.IsDefined())
     {
         decltype(projects) all_projects;
-        for (const auto &kv : sd)
+        for (const auto &v : sd)
         {
-            auto load_specific = [this, &kv, &subdir_projects]()
+            auto load_specific = [this, &subdir_projects](const path &d, const String &name)
             {
-                path d = kv.as<String>();
                 if (!fs::exists(d))
                     return;
 
-                SwapAndRestore r(subdir, d.filename().string());
+                SwapAndRestore r(subdir, name);
                 reload(d);
 
                 for (auto &[s, p] : projects)
@@ -160,20 +159,26 @@ void Config::load(const yaml &root)
                 projects.clear();
             };
 
-            if (kv.IsScalar())
-                load_specific();
-            else if (kv.IsMap())
+            if (v.IsScalar())
+            {
+                path d = v.as<String>();
+                load_specific(d, d.filename().string());
+            }
+            else if (v.IsMap())
             {
                 path d;
-                if (kv["dir"].IsDefined())
-                    d = kv["dir"].as<String>();
-                else if (kv["directory"].IsDefined())
-                    d = kv["directory"].as<String>();
+                if (v["dir"].IsDefined())
+                    d = v["dir"].as<String>();
+                else if (v["directory"].IsDefined())
+                    d = v["directory"].as<String>();
                 if (!fs::exists(d))
-                    return;
-                if (kv["load_all_packages"].IsDefined() && kv["load_all_packages"].as<bool>())
+                    continue;
+                String name = d.filename().string();
+                if (v["name"].IsDefined())
+                    name = v["name"].as<String>();
+                if (v["load_all_packages"].IsDefined() && v["load_all_packages"].as<bool>())
                 {
-                    SwapAndRestore r(subdir, d.filename().string());
+                    SwapAndRestore r(subdir, name);
                     reload(d);
 
                     for (auto &[s, p] : projects)
@@ -183,7 +188,7 @@ void Config::load(const yaml &root)
                     projects.clear();
                 }
                 else
-                    load_specific();
+                    load_specific(d, name);
                 // add skip option? - skip specific
             }
         }
