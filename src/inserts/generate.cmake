@@ -85,6 +85,8 @@ if (NOT EXISTS ${import} OR
                 # BUG: copying bad cmake config dirs (32 - 64 bits)
                 #set(from ${storage_dir_cfg}/${config_dir}/CMakeFiles/${CMAKE_VERSION})
                 set(from ${CMAKE_BINARY_DIR}/CMakeFiles/${CMAKE_VERSION})
+                #upd2 - still unknown reason here ^
+                #do not enable
             else()
                 set(from ${CMAKE_BINARY_DIR}/CMakeFiles/${CMAKE_VERSION})
             endif()
@@ -170,6 +172,9 @@ if (NOT EXISTS ${import} OR
         message(STATUS "Preparing build tree for ${target} (${config_unhashed} - ${config_dir} - ${generator})")
         #message(STATUS "")
 
+        # we also pass toolset everywhere because of MSVC's or CMake bugs with Hostx86/x64 toolchains
+        # when you cannot just invoke it as pure x86 or x64 thing.
+
         # call cmake
         if (EXECUTABLE)# AND NOT CPPAN_BUILD_EXECUTABLES_WITH_SAME_CONFIG)
                 # build with the same compiler, generator and linker (in some cases)
@@ -180,6 +185,7 @@ if (NOT EXISTS ${import} OR
                             -DCMAKE_CXX_COMPILER=${CPPAN_HOST_CXX_COMPILER}
                             -DVARIABLES_FILE=${variables_file}
                             -G \"${generator}\""
+                            #${toolset}"
                     )
                     execute_process(
                         COMMAND ${CMAKE_COMMAND}
@@ -188,6 +194,7 @@ if (NOT EXISTS ${import} OR
                             -DCMAKE_CXX_COMPILER=${CPPAN_HOST_CXX_COMPILER}
                             -DVARIABLES_FILE=${variables_file}
                             -G "${generator}"
+                            #${toolset}
                         RESULT_VARIABLE ret
                     )
                 else()
@@ -198,6 +205,7 @@ if (NOT EXISTS ${import} OR
                             ${linker}
                             -DVARIABLES_FILE=${variables_file}
                             -G \"${generator}\""
+                            #${toolset}"
                     )
                     execute_process(
                         COMMAND ${CMAKE_COMMAND}
@@ -207,6 +215,7 @@ if (NOT EXISTS ${import} OR
                             ${linker}
                             -DVARIABLES_FILE=${variables_file}
                             -G "${generator}"
+                            #${toolset}
                         RESULT_VARIABLE ret
                     )
                 endif()
@@ -217,6 +226,7 @@ if (NOT EXISTS ${import} OR
                         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
                         -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
                         -G \"${generator}\"
+                        #${toolset}
                         -DVARIABLES_FILE=${variables_file}
                         ${sysver}"
                 )
@@ -226,6 +236,7 @@ if (NOT EXISTS ${import} OR
                         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
                         -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
                         -G "${generator}"
+                        #${toolset}
                         -DVARIABLES_FILE=${variables_file}
                         ${sysver}
                     RESULT_VARIABLE ret
@@ -236,6 +247,7 @@ if (NOT EXISTS ${import} OR
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -G \"${generator}\"
+                        ${toolset}
                         -DVARIABLES_FILE=${variables_file}
                         ${sysver}"
                 )

@@ -52,6 +52,7 @@ struct StartupAction
         ClearCfgDirs                = (1 << 6),
         ClearPackagesDatabase       = (1 << 7),
         ClearStorageDirObj          = (1 << 8),
+        ClearStorageDirTmp          = (1 << 9),
     };
 
     int id;

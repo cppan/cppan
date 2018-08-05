@@ -331,7 +331,6 @@ function(get_configuration_unhashed out)
         endif()
     endif()
 
-
     # add suffix (configuration) to distinguish build types
     # for non VS/XCODE builds
     set(configuration)

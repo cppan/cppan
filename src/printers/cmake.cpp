@@ -1358,6 +1358,9 @@ int CMakePrinter::generate(const BuildSettings &bs) const
     {
         c.args.push_back("-G");
         c.args.push_back(s.generator);
+
+        //if (s.generator.find("Win64") != s.generator.npos)
+            //c.args.push_back("-Thost=x64");
     }
     if (!s.system_version.empty())
         c.args.push_back("-DCMAKE_SYSTEM_VERSION=" + s.system_version);
@@ -1656,10 +1659,19 @@ void CMakePrinter::print_settings(CMakeContext &ctx) const
     ctx.addLine("set(PACKAGE_BUGREPORT)");
     ctx.addLine();
 
+    // returns 0x010203
     auto n2hex = [](int n, int w)
     {
         std::ostringstream ss;
-        ss << std::hex << std::setfill('0') << std::setw(w) << n;
+        ss << n / 10 << n % 10;
+        return ss.str();
+    };
+
+    // returns 0x000100020003
+    auto n4hex = [](int n, int w)
+    {
+        std::ostringstream ss;
+        ss << n / 1000 << n / 100 << n / 10 << n % 10;
         return ss.str();
     };
 
@@ -1670,17 +1682,17 @@ void CMakePrinter::print_settings(CMakeContext &ctx) const
     }
     else
     {
-        auto ver2hex = [this, &n2hex](int n)
+        auto ver2hex = [this](int n, auto f)
         {
             std::ostringstream ss;
-            ss << n2hex(d.version.major, n);
-            ss << n2hex(d.version.minor, n);
-            ss << n2hex(d.version.patch, n);
+            ss << f(d.version.major, n);
+            ss << f(d.version.minor, n);
+            ss << f(d.version.patch, n);
             return ss.str();
         };
 
-        ctx.addLine("set(PACKAGE_VERSION_NUM  \"0x" + ver2hex(2) + "\")");
-        ctx.addLine("set(PACKAGE_VERSION_NUM2 \"0x" + ver2hex(4) + "LL\")");
+        ctx.addLine("set(PACKAGE_VERSION_NUM  \"0x" + ver2hex(2, n2hex) + "\")");
+        ctx.addLine("set(PACKAGE_VERSION_NUM2 \"0x" + ver2hex(4, n4hex) + "LL\")");
     }
     ctx.addLine();
 
@@ -1777,11 +1789,14 @@ void CMakePrinter::print_settings(CMakeContext &ctx) const
     ctx.addLine();
 
     // copy exe cmake settings
-    ctx.if_("EXECUTABLE AND CPPAN_USE_CACHE");
+    ctx.if_("EXECUTABLE AND CPPAN_USE_CACHE AND NOT CPPAN_LOCAL_PROJECT");
     ctx.addLine("set(to \"" + normalize_path(directories.storage_dir_cfg) + "/${config}/CMakeFiles/${CMAKE_VERSION}\")");
+    ctx.addLine("set(from \"${PROJECT_BINARY_DIR}/CMakeFiles/${CMAKE_VERSION}\")");
+    // probably this is incorrect because from dir must be there always
+    //ctx.if_("NOT EXISTS ${to} AND EXISTS ${from}");
     ctx.if_("NOT EXISTS ${to}");
     ctx.addLine("execute_process(");
-    ctx.addLine("COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_BINARY_DIR}/CMakeFiles/${CMAKE_VERSION} ${to}");
+    ctx.addLine("COMMAND ${CMAKE_COMMAND} -E copy_directory ${from} ${to}");
     ctx.addLine("    RESULT_VARIABLE ret");
     ctx.addLine(")");
     ctx.endif();

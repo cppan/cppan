@@ -502,6 +502,11 @@ void ServiceDatabase::performStartupActions() const
                 remove_all_from_dir(directories.storage_dir_exp);
             }
 
+            if (a.action & StartupAction::ClearStorageDirTmp)
+            {
+                remove_all_from_dir(directories.storage_dir_tmp);
+            }
+
             if (a.action & StartupAction::ClearStorageDirObj)
             {
                 remove_all_from_dir(directories.storage_dir_obj);
