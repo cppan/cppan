@@ -507,7 +507,7 @@ function(add_variable array variable)
             list(REMOVE_AT ${array}_VALUES ${found})
             list(INSERT ${array}_VALUES ${found} "${${variable}}")
             #message(STATUS "New array: ${${array}_VALUES}")
-            set(${array}_VALUES ${${array}_VALUES} CACHE STRING "Chached array." FORCE)
+            set(${array}_VALUES ${${array}_VALUES} CACHE STRING "Cached array." FORCE)
         endif()
 
         return()
@@ -521,9 +521,9 @@ function(add_variable array variable)
         list(APPEND ${array}_VALUES "${${variable}}")
     endif()
 
-    set(${array}_TYPES ${${array}_TYPES} CACHE STRING "Chached array." FORCE)
-    set(${array}_KEYS ${${array}_KEYS} CACHE STRING "Chached array." FORCE)
-    set(${array}_VALUES ${${array}_VALUES} CACHE STRING "Chached array." FORCE)
+    set(${array}_TYPES ${${array}_TYPES} CACHE STRING "Cached array." FORCE)
+    set(${array}_KEYS ${${array}_KEYS} CACHE STRING "Cached array." FORCE)
+    set(${array}_VALUES ${${array}_VALUES} CACHE STRING "Cached array." FORCE)
 endfunction(add_variable)
 
 ########################################
@@ -574,9 +574,9 @@ function(read_variables_file array f)
         add_variable(${array} ${k})
     endforeach()
 
-    set(${array}_TYPES ${${array}_TYPES} CACHE STRING "Chached array." FORCE)
-    set(${array}_KEYS ${${array}_KEYS} CACHE STRING "Chached array." FORCE)
-    set(${array}_VALUES ${${array}_VALUES} CACHE STRING "Chached array." FORCE)
+    set(${array}_TYPES ${${array}_TYPES} CACHE STRING "Cached array." FORCE)
+    set(${array}_KEYS ${${array}_KEYS} CACHE STRING "Cached array." FORCE)
+    set(${array}_VALUES ${${array}_VALUES} CACHE STRING "Cached array." FORCE)
 endfunction(read_variables_file)
 
 ########################################

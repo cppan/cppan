@@ -1774,11 +1774,10 @@ String Project::print_cpp2()
     else if (pkg.flags[pfExecutable])
         type = "ExecutableTarget";
 
-    ctx.beginBlock("void build(Solution &sln)");
-    ctx.addLine("auto &s = sln.addDirectory(\"demo\");");
+    ctx.beginBlock("void build(Solution &s)");
     ctx.addLine("auto &" + name + " = s.addTarget<" + type + ">(\"" + pkg.ppath.slice(3).toString() + "\", \"" + pkg.version.toString() + "\");");
     auto src = print_source_cpp(source);
-    ctx.addLine(name + ".Source = " + src + ";");
+    ctx.addLine(name + " += " + src + ";");
     ctx.emptyLines();
 
     if (checks.checks.size() > 2)
@@ -1909,125 +1908,69 @@ String Project::print_cpp2()
         return s;
     };
 
-    auto any = options.find("any");
-    if (any != options.end())
+    auto print_def = [&ctx, &name, &escape_str](auto &k, auto &v, const String &type = {})
     {
-        auto print_def = [&ctx, &name, &escape_str](auto &k, auto &v)
-        {
-            if (k == "private")
-                ctx.addLine(name + ".Private += \"" + escape_str(v) + "\"_d;");
-            else if (k == "public")
-                ctx.addLine(name + ".Public += \"" + escape_str(v) + "\"_d;");
-            else if (k == "interface")
-                ctx.addLine(name + ".Interface += \"" + escape_str(v) + "\"_d;");
-        };
+        if (k == "private")
+            ctx.addLine(name + ".Private += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_d;");
+        else if (k == "public")
+            ctx.addLine(name + ".Public += \"" + escape_str(v) + "\"_d;");
+        else if (k == "interface")
+            ctx.addLine(name + ".Interface += \"" + escape_str(v) + "\"_d;");
+    };
 
-        if (!any->second.definitions.empty())
+    auto print_co = [&ctx, &name, &escape_str](auto &k, auto &v, const String &type = {})
+    {
+        /*if (k == "private")
+            ctx.addLine(name + ".Private += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_d;");
+        else if (k == "public")
+            ctx.addLine(name + ".Public += \"" + escape_str(v) + "\"_d;");
+        else if (k == "interface")
+            ctx.addLine(name + ".Interface += \"" + escape_str(v) + "\"_d;");*/
+    };
+
+    auto print_group = [this, &print_def, &print_co, &ctx](const String &gn, const String &type = {})
+    {
+        auto g = options.find(gn);
+        if (g == options.end())
+            return;
+
+        auto print_obj = [&ctx, &type](auto &obj, auto &sysobj, auto f)
         {
-            for (auto &[k, v] : any->second.definitions)
-                print_def(k, v);
-        }
-        if (!any->second.system_definitions.empty())
-        {
-            for (auto &[k2, v2] : any->second.system_definitions)
+            for (auto &[k, v] : obj)
+                f(k, v, type);
+            for (auto &[k2, v2] : sysobj)
             {
                 if (k2 == "win32")
                 {
                     ctx.beginBlock("if (s.Settings.TargetOS.Type == OSType::Windows)");
                     for (auto &[k, v] : v2)
-                        print_def(k, v);
+                        f(k, v);
                     ctx.endBlock();
                 }
                 else if (k2 == "unix")
                 {
                     ctx.beginBlock("if (s.Settings.TargetOS.Type != OSType::Windows)");
                     for (auto &[k, v] : v2)
-                        print_def(k, v);
+                        f(k, v);
+                    ctx.endBlock();
+                }
+                else if (k2 == "msvc")
+                {
+                    ctx.beginBlock("if (s.Settings.Native.CompilerType == CompilerType::MSVC)");
+                    for (auto &[k, v] : v2)
+                        f(k, v);
                     ctx.endBlock();
                 }
             }
-        }
-    }
-
-    auto shared = options.find("shared");
-    if (shared != options.end())
-    {
-        auto print_def = [&ctx, &name, &escape_str](auto &k, auto &v)
-        {
-            if (k == "private")
-                ctx.addLine(name + ".Private += sw::Shared, \"" + escape_str(v) + "\"_d;");
-            else if (k == "public")
-                ctx.addLine(name + ".Public += sw::Shared, \"" + escape_str(v) + "\"_d;");
-            else if (k == "interface")
-                ctx.addLine(name + ".Interface += sw::Shared, \"" + escape_str(v) + "\"_d;");
         };
 
-        if (!shared->second.definitions.empty())
-        {
-            for (auto &[k, v] : shared->second.definitions)
-                print_def(k, v);
-        }
-        if (!shared->second.system_definitions.empty())
-        {
-            for (auto &[k2, v2] : shared->second.system_definitions)
-            {
-                if (k2 == "win32")
-                {
-                    ctx.beginBlock("if (s.Settings.TargetOS.Type == OSType::Windows)");
-                    for (auto &[k, v] : v2)
-                        print_def(k, v);
-                    ctx.endBlock();
-                }
-                else if (k2 == "unix")
-                {
-                    ctx.beginBlock("if (s.Settings.TargetOS.Type != OSType::Windows)");
-                    for (auto &[k, v] : v2)
-                        print_def(k, v);
-                    ctx.endBlock();
-                }
-            }
-        }
-    }
+        print_obj(g->second.definitions, g->second.system_definitions, print_def);
+        print_obj(g->second.compile_options, g->second.system_compile_options, print_co);
+    };
 
-    auto static_ = options.find("static");
-    if (static_ != options.end())
-    {
-        auto print_def = [&ctx, &name, &escape_str](auto &k, auto &v)
-        {
-            if (k == "private")
-                ctx.addLine(name + ".Private += sw::Static, \"" + escape_str(v) + "\"_d;");
-            else if (k == "public")
-                ctx.addLine(name + ".Public += sw::Static, \"" + escape_str(v) + "\"_d;");
-            else if (k == "interface")
-                ctx.addLine(name + ".Interface. += sw::Static, \"" + escape_str(v) + "\"_d;");
-        };
-
-        if (!static_->second.definitions.empty())
-        {
-            for (auto &[k, v] : static_->second.definitions)
-                print_def(k, v);
-        }
-        if (!static_->second.system_definitions.empty())
-        {
-            for (auto &[k2, v2] : static_->second.system_definitions)
-            {
-                if (k2 == "win32")
-                {
-                    ctx.beginBlock("if (s.Settings.TargetOS.Type == OSType::Windows)");
-                    for (auto &[k, v] : v2)
-                        print_def(k, v);
-                    ctx.endBlock();
-                }
-                else if (k2 == "unix")
-                {
-                    ctx.beginBlock("if (s.Settings.TargetOS.Type != OSType::Windows)");
-                    for (auto &[k, v] : v2)
-                        print_def(k, v);
-                    ctx.endBlock();
-                }
-            }
-        }
-    }
+    print_group("any");
+    print_group("shared", "sw::Shared");
+    print_group("static", "sw::Static");
 
     ctx.emptyLines();
 

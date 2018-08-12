@@ -355,7 +355,9 @@ try
     }
     if (options().count("print-cpp2"))
     {
-        auto pkg = extractFromString(options["print-cpp2"].as<String>());
+        auto s = options["print-cpp2"].as<String>();
+        auto [_, deps] = resolve_dependency(s);
+        auto pkg = *deps.begin();
         Config c(pkg.getDirSrc());
         c.getDefaultProject().pkg = pkg;
         std::cout << c.getDefaultProject().print_cpp2();
