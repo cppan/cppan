@@ -614,8 +614,8 @@ auto run_command(const Settings &bs, primitives::Command &c)
 auto library_api(const Package &d)
 {
     // we use short hash to avoid cl.exe issues with long command line
-    return CPPAN_EXPORT_PREFIX + d.target_name_hash;
-    //return CPPAN_EXPORT_PREFIX + d.variable_name;
+    //return CPPAN_EXPORT_PREFIX + d.target_name_hash;
+    return CPPAN_EXPORT_PREFIX + d.variable_name;
 }
 
 void load_cppan_command_unconditionally(CMakeContext &ctx)
