@@ -38,7 +38,6 @@
 #include <primitives/pack.h>
 #include <primitives/templates.h>
 #include <primitives/executor.h>
-#include <primitives/minidump.h>
 #include <primitives/win32helpers.h>
 
 #include <iostream>
@@ -486,26 +485,8 @@ catch (...)
 
 int main(int argc, char *argv[])
 {
-#ifndef _WIN32
     auto r = main1(argc, argv);
     return r;
-#else
-    primitives::minidump::dir = L"cppan\\dump";
-    primitives::minidump::v_major = VERSION_MAJOR;
-    primitives::minidump::v_minor = VERSION_MINOR;
-    primitives::minidump::v_patch = VERSION_PATCH;
-    primitives::executor::bExecutorUseSEH = true;
-
-    __try
-    {
-        auto r = main1(argc, argv);
-        return r;
-    }
-    __except (PRIMITIVES_GENERATE_DUMP)
-    {
-        return 1;
-    }
-#endif
 }
 
 void check_spec_file()

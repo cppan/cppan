@@ -493,7 +493,7 @@ void Project::findSources(path p)
     }
 
     if (files.empty() && !empty)
-        throw_with_trace(std::runtime_error("no files found"));
+        throw std::runtime_error("no files found");
 
     // disable on windows
 #ifndef _WIN32
@@ -1977,7 +1977,7 @@ String Project::print_cpp2()
     for (auto &d : dependencies)
     {
         auto pp = d.second.ppath.toString();
-        boost::replace_all(pp, "pvt.cppan", "pub.cppan2");
+        boost::replace_all(pp, "pvt.cppan", "org.sw");
         auto vv = d.second.version.toAnyVersion();
         if (vv != "*")
             vv = "-" + vv;
