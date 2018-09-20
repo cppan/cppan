@@ -19,7 +19,7 @@
 #include "cppan_string.h"
 #include "filesystem.h"
 
-#include <primitives/hash.h>
+#include <primitives/hash_combine.h>
 
 #define LOCAL_VERSION_NAME "local"
 

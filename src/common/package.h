@@ -22,7 +22,7 @@
 #include "project_path.h"
 #include "version.h"
 
-#include <primitives/hash.h>
+#include <primitives/hash_combine.h>
 
 #include <map>
 

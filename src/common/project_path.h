@@ -20,7 +20,7 @@
 #include "filesystem.h"
 #include "yaml.h"
 
-#include <primitives/hash.h>
+#include <primitives/hash_combine.h>
 
 #define ROOT_PROJECT_PATH(name)           \
     static ProjectPath name()             \

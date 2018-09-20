@@ -1462,7 +1462,7 @@ void saveOptionsMap(yaml &node, const OptionsMap &m)
 
 String Project::print_cpp()
 {
-    Context ctx;
+    CppContext ctx;
 
     String name = pkg.ppath.back();
 
@@ -1762,7 +1762,7 @@ String Project::print_cpp()
 
 String Project::print_cpp2()
 {
-    Context ctx;
+    CppContext ctx;
 
     String name = pkg.ppath.back();
 
@@ -1908,64 +1908,56 @@ String Project::print_cpp2()
         return s;
     };
 
-    auto print_def = [&ctx, &name, &escape_str](auto &k, auto &v, const String &type = {})
+    auto print_def = [&ctx, &name, &escape_str](auto &k, auto &v, const String &ending, const String &type = {})
     {
         if (k == "private")
-            ctx.addLine(name + ".Private += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_d;");
+            ctx.addLine(name + ".Private += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_" + ending + ";");
         else if (k == "public")
-            ctx.addLine(name + ".Public += \"" + escape_str(v) + "\"_d;");
+            ctx.addLine(name + ".Public += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_" + ending + ";");
         else if (k == "interface")
-            ctx.addLine(name + ".Interface += \"" + escape_str(v) + "\"_d;");
+            ctx.addLine(name + ".Interface += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_" + ending + ";");
     };
 
-    auto print_co = [&ctx, &name, &escape_str](auto &k, auto &v, const String &type = {})
-    {
-        /*if (k == "private")
-            ctx.addLine(name + ".Private += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_d;");
-        else if (k == "public")
-            ctx.addLine(name + ".Public += \"" + escape_str(v) + "\"_d;");
-        else if (k == "interface")
-            ctx.addLine(name + ".Interface += \"" + escape_str(v) + "\"_d;");*/
-    };
-
-    auto print_group = [this, &print_def, &print_co, &ctx](const String &gn, const String &type = {})
+    auto print_group = [this, &print_def, &ctx](const String &gn, const String &type = {})
     {
         auto g = options.find(gn);
         if (g == options.end())
             return;
 
-        auto print_obj = [&ctx, &type](auto &obj, auto &sysobj, auto f)
+        auto print_obj = [&ctx, &type](auto &obj, auto &sysobj, auto f, const String &ending)
         {
             for (auto &[k, v] : obj)
-                f(k, v, type);
+                f(k, v, ending, type);
             for (auto &[k2, v2] : sysobj)
             {
                 if (k2 == "win32")
                 {
                     ctx.beginBlock("if (s.Settings.TargetOS.Type == OSType::Windows)");
                     for (auto &[k, v] : v2)
-                        f(k, v);
+                        f(k, v, ending);
                     ctx.endBlock();
                 }
                 else if (k2 == "unix")
                 {
                     ctx.beginBlock("if (s.Settings.TargetOS.Type != OSType::Windows)");
                     for (auto &[k, v] : v2)
-                        f(k, v);
+                        f(k, v, ending);
                     ctx.endBlock();
                 }
                 else if (k2 == "msvc")
                 {
                     ctx.beginBlock("if (s.Settings.Native.CompilerType == CompilerType::MSVC)");
                     for (auto &[k, v] : v2)
-                        f(k, v);
+                        f(k, v, ending);
                     ctx.endBlock();
                 }
             }
         };
 
-        print_obj(g->second.definitions, g->second.system_definitions, print_def);
-        print_obj(g->second.compile_options, g->second.system_compile_options, print_co);
+        print_obj(g->second.definitions, g->second.system_definitions, print_def, "d");
+        print_obj(g->second.compile_options, g->second.system_compile_options, print_def, "xxx");
+        print_obj(g->second.link_options, g->second.system_link_options, print_def, "xxx");
+        print_obj(g->second.link_libraries, g->second.system_link_libraries, print_def, "lib");
     };
 
     print_group("any");
