@@ -1,12 +1,12 @@
 ## [C++ Archive Network](https://cppan.org/)
 
-[![Build Status](https://travis-ci.org/cppan/cppan.svg?branch=master)](https://travis-ci.org/cppan/cppan)
+[![Build Status](https://travis-ci.org/cppan/cppan.svg?branch=v1)](https://travis-ci.org/cppan/cppan)
 [![Build status](https://ci.appveyor.com/api/projects/status/iacnrt6byhy8ox5v?svg=true)](https://ci.appveyor.com/project/egorpugin/cppan)
 
 ### Resources
 
 - Homepage: https://cppan.org/
-- Docs: https://github.com/cppan/cppan/blob/master/doc/
+- Docs: https://github.com/cppan/cppan/blob/v1/doc/
 - Download: https://cppan.org/client/
 - Issue tracking: https://github.com/cppan/cppan/issues
 - Forum: https://groups.google.com/forum/#!forum/cppan
