@@ -7,7 +7,7 @@ void configure(Solution &s)
 void build(Solution &s)
 {
     auto &p = s.addProject("cppan", "master");
-    p.Source = Git("https://github.com/cppan/cppan", "", "{v}");
+    p. += Git("https://github.com/cppan/cppan", "", "v1");
 
     auto &common = p.addTarget<StaticLibraryTarget>("common");
     common.CPPVersion = CPPLanguageStandard::CPP17;

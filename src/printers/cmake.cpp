@@ -249,7 +249,7 @@ void file_footer(CMakeContext &ctx, const Package &d)
 
     ctx.addLine(config_delimeter);
     ctx.addLine();
-    ctx.splitLines();
+    //ctx.splitLines();
 }
 
 void print_storage_dirs(CMakeContext &ctx)
@@ -544,7 +544,7 @@ void print_dependencies(CMakeContext &ctx, const Package &d, bool use_cache)
     if (print_includes)
         ctx += ctx_includes;
 
-    ctx.splitLines();
+    //ctx.splitLines();
 }
 
 void gather_build_deps(const Packages &dd, Packages &out, bool recursive = false, int depth = 0)
@@ -614,8 +614,8 @@ auto run_command(const Settings &bs, primitives::Command &c)
 auto library_api(const Package &d)
 {
     // we use short hash to avoid cl.exe issues with long command line
-    //return CPPAN_EXPORT_PREFIX + d.target_name_hash;
-    return CPPAN_EXPORT_PREFIX + d.variable_name;
+    return CPPAN_EXPORT_PREFIX + d.target_name_hash;
+    //return CPPAN_EXPORT_PREFIX + d.variable_name;
 }
 
 void load_cppan_command_unconditionally(CMakeContext &ctx)
@@ -1450,7 +1450,7 @@ int CMakePrinter::generate(const BuildSettings &bs) const
         }
     }
 
-    return ret.value();
+    return (int)ret.value();
 }
 
 int CMakePrinter::build(const BuildSettings &bs) const
@@ -1472,7 +1472,7 @@ int CMakePrinter::build(const BuildSettings &bs) const
             c.args.push_back(a);
     }
 
-    return run_command(settings, c).value();
+    return (int)run_command(settings, c).value();
 }
 
 void CMakePrinter::clear_cache() const

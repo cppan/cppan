@@ -19,7 +19,7 @@
 #include <primitives/context.h>
 #include <primitives/string.h>
 
-class CMakeContext : public Context
+class CMakeContext : public primitives::Context
 {
 public:
     void if_(const String &s);

@@ -3,7 +3,7 @@
 #include <sstream>
 
 #define CATCH_CONFIG_RUNNER
-#include <catch.hpp>
+#include <catch2/catch.hpp>
 
 TEST_CASE("save/load", "[source]")
 {

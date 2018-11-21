@@ -29,7 +29,7 @@ void file_footer(CMakeContext &ctx, const Package &d);
 struct CMakePrinter : Printer
 {
     virtual ~CMakePrinter() = default;
-    
+
     void prepare_build(const BuildSettings &bs) const override;
     void prepare_rebuild() const override;
     int generate(const BuildSettings &bs) const override;
@@ -71,7 +71,7 @@ private:
 };
 
 template <class F>
-void add_aliases(Context &ctx, const Package &d, bool all, const StringSet &aliases, F &&f)
+void add_aliases(primitives::Context &ctx, const Package &d, bool all, const StringSet &aliases, F &&f)
 {
     auto add_line = [&ctx](const auto &s)
     {
@@ -111,14 +111,14 @@ void add_aliases(Context &ctx, const Package &d, bool all, const StringSet &alia
 }
 
 template <class F>
-void add_aliases(Context &ctx, const Package &d, bool all, F &&f)
+void add_aliases(primitives::Context &ctx, const Package &d, bool all, F &&f)
 {
     const auto &aliases = rd[d].config->getDefaultProject().aliases;
     add_aliases(ctx, d, all, aliases, std::forward<F>(f));
 }
 
 template <class F>
-void add_aliases(Context &ctx, const Package &d, F &&f)
+void add_aliases(primitives::Context &ctx, const Package &d, F &&f)
 {
     add_aliases(ctx, d, true, std::forward<F>(f));
 }

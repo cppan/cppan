@@ -32,6 +32,7 @@
 String fix_imports(const Strings &lines_old, const String &old_target, const String &new_target)
 {
     CMakeContext ctx;
+    ctx.addLine("if (NOT TARGET " + new_target + ")");
     ctx.increaseIndent();
     for (auto &line1 : lines_old)
     {
@@ -43,10 +44,9 @@ String fix_imports(const Strings &lines_old, const String &old_target, const Str
         ctx.addLine(line);
     }
     ctx.decreaseIndent();
-    ctx.before().addLine("if (NOT TARGET " + new_target + ")");
-    ctx.after().addLine("endif()");
-    ctx.after().emptyLines(3);
-    ctx.splitLines();
+    ctx.addLine("endif()");
+    ctx.emptyLines(3);
+    //ctx.splitLines();
     return ctx.getText();
 }
 
@@ -142,7 +142,7 @@ void fix_imports(const String &target, const path &aliases_file, const path &old
         });
 
         ctx.emptyLines(1);
-        ctx.splitLines();
+        //ctx.splitLines();
         return ctx.getText();
     };
 
@@ -166,7 +166,7 @@ void fix_imports(const String &target, const path &aliases_file, const path &old
     }
     file_footer(ctx, dep);
 
-    ctx.splitLines();
+    //ctx.splitLines();
     auto t = ctx.getText();
     boost::replace_all(t, "\r", "");
     ofile << t;

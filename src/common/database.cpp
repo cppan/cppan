@@ -72,6 +72,8 @@ std::vector<StartupAction> startup_actions{
     { 11, StartupAction::ServiceDbClearConfigHashes },
     { 12, StartupAction::ClearStorageDirExp | StartupAction::ClearStorageDirObj },
     { 13, StartupAction::ClearStorageDirExp },
+    // full cleanup, we changed api name encoding to hashes :(
+    { 14, StartupAction::ClearStorageDirExp | StartupAction::ClearStorageDirObj | StartupAction::ClearStorageDirSrc | StartupAction::ClearStorageDirBin | StartupAction::ClearStorageDirLib },
 };
 
 const TableDescriptors &get_service_tables()
@@ -510,6 +512,11 @@ void ServiceDatabase::performStartupActions() const
             if (a.action & StartupAction::ClearStorageDirObj)
             {
                 remove_all_from_dir(directories.storage_dir_obj);
+            }
+
+            if (a.action & StartupAction::ClearStorageDirSrc)
+            {
+                remove_all_from_dir(directories.storage_dir_src);
             }
 
             if (a.action & StartupAction::ClearStorageDirBin)

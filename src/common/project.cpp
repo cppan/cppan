@@ -1462,7 +1462,7 @@ void saveOptionsMap(yaml &node, const OptionsMap &m)
 
 String Project::print_cpp()
 {
-    CppContext ctx;
+    primitives::CppContext ctx;
 
     String name = pkg.ppath.back();
 
@@ -1762,7 +1762,7 @@ String Project::print_cpp()
 
 String Project::print_cpp2()
 {
-    CppContext ctx;
+    primitives::CppContext ctx;
 
     String name = pkg.ppath.back();
 
@@ -2033,6 +2033,6 @@ String Project::print_cpp2()
         ctx.endBlock();
     }
 
-    ctx.splitLines();
+    //ctx.splitLines();
     return ctx.getText();
 }
