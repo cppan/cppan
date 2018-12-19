@@ -1,3 +1,6 @@
+#pragma sw require header pub.egorpugin.primitives.tools.embedder-master
+#pragma sw require header org.sw.demo.lexxmark.winflexbison.bison-master
+
 void configure(Solution &s)
 {
     s.Settings.Native.LibrariesType = LibraryType::Static;
@@ -7,7 +10,7 @@ void configure(Solution &s)
 void build(Solution &s)
 {
     auto &p = s.addProject("cppan", "master");
-    p. += Git("https://github.com/cppan/cppan", "", "v1");
+    p += Git("https://github.com/cppan/cppan", "", "v1");
 
     auto &common = p.addTarget<StaticLibraryTarget>("common");
     common.CPPVersion = CPPLanguageStandard::CPP17;
@@ -30,12 +33,15 @@ void build(Solution &s)
         common.Public += "UNICODE"_d;
 
     common.Public +=
-        "pub.cppan2.demo.boost.optional-1"_dep,
-        "pub.cppan2.demo.boost.property_tree-1"_dep,
-        "pub.cppan2.demo.boost.variant-1"_dep,
-        //"pub.cppan2.demo.boost.stacktrace-1"_dep,
-        "pub.cppan2.demo.apolukhin.stacktrace-master"_dep,
-        "pub.cppan2.demo.sqlite3-3"_dep,
+        "org.sw.demo.boost.optional-1"_dep,
+        "org.sw.demo.boost.property_tree-1"_dep,
+        "org.sw.demo.boost.variant-1"_dep,
+        "org.sw.demo.boost.stacktrace-1"_dep,
+        //"org.sw.demo.apolukhin.stacktrace-master"_dep,
+        "org.sw.demo.sqlite3-3"_dep,
+        "org.sw.demo.fmt-*"_dep,
+        "org.sw.demo.imageworks.pystring-1"_dep,
+        "org.sw.demo.giovannidicanio.winreg-master"_dep,
 
         "pub.egorpugin.primitives.string-master"_dep,
         "pub.egorpugin.primitives.filesystem-master"_dep,
@@ -48,31 +54,19 @@ void build(Solution &s)
         "pub.egorpugin.primitives.log-master"_dep,
         "pub.egorpugin.primitives.pack-master"_dep,
         "pub.egorpugin.primitives.command-master"_dep,
+        "pub.egorpugin.primitives.win32helpers-master"_dep,
         "pub.egorpugin.primitives.yaml-master"_dep;
 
     time_t v;
     time(&v);
     common.fileWriteSafe("stamp.h.in", "\"" + std::to_string(v) + "\"", true);
+    embed(common, "src/inserts/inserts.cpp.in");
 
-    auto &inserts_generator = p.addTarget<ExecutableTarget>("inserts_generator");
-    inserts_generator.CPPVersion = CPPLanguageStandard::CPP17;
-    inserts_generator += "src/gen/inserter.cpp";
-    inserts_generator += "pub.egorpugin.primitives.filesystem-master"_dep;
+    // at the moment flex&bison generated files are present in the build tree,
+    // so build passes without generation stage
 
+    /*auto flex_bison = [&common](const std::string &name)
     {
-        auto c = std::make_shared<Command>();
-        c->program = inserts_generator.getOutputFile();
-        c->args.push_back((common.SourceDir / "src/inserts/inserts.cpp.in").string());
-        c->args.push_back((common.BinaryDir / "inserts.cpp").string());
-        c->working_directory = common.SourceDir / "src";
-        c->addInput(c->args[0]);
-        c->addOutput(c->args[1]);
-        common += path(c->args[1]);
-    }
-
-    auto flex_bison = [&common](const std::string &name)
-    {
-
         fs::create_directories(common.BinaryDir / ("src/" + name));
 
         // flex/bison
@@ -97,7 +91,7 @@ void build(Solution &s)
             c->addOutput(common.BinaryDir / ("src/" + name + "/lexer.cpp"));
             common += path(common.BinaryDir / ("src/" + name + "/lexer.cpp"));
         }
-    };
+    };*/
 
     //flex_bison("bazel");
     //flex_bison("comments");
@@ -105,6 +99,6 @@ void build(Solution &s)
     auto &client = p.addTarget<ExecutableTarget>("client");
     client.CPPVersion = CPPLanguageStandard::CPP17;
     client += "src/client/.*"_rr, common,
-        "pub.cppan2.demo.boost.program_options-1"_dep,
-        "pub.cppan2.demo.yhirose.cpp_linenoise-master"_dep;
+        "org.sw.demo.boost.program_options-1"_dep,
+        "org.sw.demo.yhirose.cpp_linenoise-master"_dep;
 }
