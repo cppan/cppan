@@ -28,7 +28,9 @@ void build(Solution &s)
 
     common.Public += "VERSION_MAJOR=0"_d;
     common.Public += "VERSION_MINOR=2"_d;
-    common.Public += "VERSION_PATCH=4"_d;
+    common.Public += "VERSION_PATCH=5"_d;
+    common.Public += "BUILD_NUMBER=0"_d;
+    common.Public += "CPPAN_VERSION_STRING=0.2.5"_d;
     if (s.Settings.TargetOS.Type == OSType::Windows)
         common.Public += "UNICODE"_d;
 
