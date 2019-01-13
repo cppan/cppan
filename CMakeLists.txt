@@ -147,6 +147,7 @@ cppan_add_package(
         pvt.egorpugin.primitives.lock-master
         pvt.egorpugin.primitives.log-master
         pvt.egorpugin.primitives.pack-master
+        pvt.egorpugin.primitives.patch-master
         pvt.egorpugin.primitives.yaml-master
         pvt.egorpugin.primitives.win32helpers-master
         pvt.egorpugin.primitives.sw.main-master

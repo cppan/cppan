@@ -173,14 +173,17 @@ void saveOptionsMap(yaml &root, const OptionsMap &m);
 
 using ReplaceInFiles = std::vector<std::pair<String, String>>;
 
+struct Project;
+
 struct Patch
 {
     ReplaceInFiles replace;
     ReplaceInFiles regex_replace;
+    ReplaceInFiles file_patches;
 
     void load(const yaml &root);
     void save(yaml &root) const;
-    void patchSources(const Files &files) const;
+    void patchSources(const Project &p, const Files &files) const;
 };
 
 struct Project

@@ -29,12 +29,14 @@
 #include <boost/algorithm/string.hpp>
 
 #include <primitives/command.h>
+#include <primitives/hash.h>
 #include <primitives/pack.h>
+#include <primitives/patch.h>
 
 #include <regex>
 
 #include <primitives/log.h>
-//DECLARE_STATIC_LOGGER(logger, "project");
+DECLARE_STATIC_LOGGER(logger, "project");
 
 using MimeType = String;
 using MimeTypes = std::set<MimeType>;
@@ -306,17 +308,22 @@ Strings BuildSystemConfigInsertions::getStrings()
     return strings;
 }
 
+#define UNIDIFF_PREFIX "unidiff_patch_"
+
 void Patch::load(const yaml &root)
 {
-    auto load_replace = [&root](auto &a, const String &k)
+    auto load_replace = [this, &root](auto &a, const String &k)
     {
-        get_map_and_iterate(root, k, [&a](auto &v)
+        get_map_and_iterate(root, k, [this, &a](auto &v)
         {
             auto k = v.first.template as<String>();
             if (v.second.IsScalar())
             {
                 auto vv = v.second.template as<String>();
-                a.emplace_back(k, vv);
+                if (k.find(UNIDIFF_PREFIX) != 0)
+                    a.emplace_back(k, vv);
+                else
+                    file_patches.emplace_back(k.substr(strlen(UNIDIFF_PREFIX)), vv);
             }
             else if (v.second.IsMap())
             {
@@ -324,7 +331,10 @@ void Patch::load(const yaml &root)
                     throw std::runtime_error("There are no 'from' and 'to' inside '" + k + "'");
                 auto from = v.second["from"].template as<String>();
                 auto to = v.second["to"].template as<String>();
-                a.emplace_back(from, to);
+                if (from.find(UNIDIFF_PREFIX) != 0)
+                    a.emplace_back(from, to);
+                else
+                    file_patches.emplace_back(from.substr(strlen(UNIDIFF_PREFIX)), to);
             }
             else
                 throw std::runtime_error("Members of '" + k + "' must be scalars or maps");
@@ -332,25 +342,63 @@ void Patch::load(const yaml &root)
     };
     load_replace(replace, "replace");
     load_replace(regex_replace, "regex_replace");
+
+    // yaml add one more newline there
+    for (auto &[s, f] : file_patches)
+    {
+        if (!f.empty())
+            f.resize(f.size() - 1);
+    }
 }
 
 void Patch::save(yaml &node) const
 {
-    auto save_replace = [&node](const auto &a, const auto &k)
+    auto save_replace = [&node](const auto &a, const auto &k, const String &prefix = {})
     {
         if (a.empty())
             return;
         yaml root;
         for (auto &r : a)
-            root[r.first] = r.second;
+            root[prefix + r.first] = r.second;
         node["patch"][k] = root;
     };
     save_replace(replace, "replace");
     save_replace(regex_replace, "regex_replace");
+    save_replace(file_patches, "replace", UNIDIFF_PREFIX);
 }
 
-void Patch::patchSources(const Files &files) const
+void Patch::patchSources(const Project &prj, const Files &files) const
 {
+    auto rd = prj.pkg.getDirSrc();
+    for (auto &[s, f] : file_patches)
+    {
+        path p = s;
+        if (p.is_absolute())
+        {
+            LOG_ERROR(logger, "patch path file is absolute: " << s);
+            continue;
+        }
+
+        auto fn = rd / p;
+        auto t = read_file(fn);
+
+        auto fn_patch = fn;
+        fn_patch += ".orig." + sha1(f).substr(0, 8);
+
+        if (fs::exists(fn_patch))
+            continue;
+
+        auto r = primitives::patch::patch(t, f);
+        if (!r)
+        {
+            LOG_ERROR(logger, "cannot apply patch to: " << s);
+            continue;
+        }
+
+        write_file(fn, *r);
+        write_file(fn_patch, t); // save orig
+    }
+
     if (replace.empty() && regex_replace.empty())
         return;
     std::vector<std::pair<std::regex, String>> regex_prepared;
@@ -1336,7 +1384,7 @@ void Project::prepareExports() const
 
 void Project::patchSources() const
 {
-    patch.patchSources(getSources());
+    patch.patchSources(*this, getSources());
 }
 
 const Files &Project::getSources() const
