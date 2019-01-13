@@ -8,6 +8,9 @@ local_settings:
 
 root_project: pvt.cppan.client
 
+add_directories:
+    - d:/dev/primitives
+
 common_settings:
     c++: 17
 
@@ -180,5 +183,8 @@ projects:
 
         dependencies:
             - common
+            - name: pvt.egorpugin.primitives.sw.main
+              version: master
+              local: primitives.sw.main
             - pvt.cppan.demo.boost.program_options: 1
             - pvt.cppan.demo.yhirose.cpp_linenoise: master

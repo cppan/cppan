@@ -39,6 +39,7 @@
 #include <primitives/templates.h>
 #include <primitives/executor.h>
 #include <primitives/win32helpers.h>
+#include <primitives/sw/main.h>
 
 #include <iostream>
 #include <thread>
@@ -63,8 +64,7 @@ void self_upgrade_copy(const path &dst);
 optional<int> internal(const Strings &args);
 void command_init(const Strings &args);
 
-int main1(int argc, char *argv[])
-try
+int main(int argc, char *argv[])
 {
     Strings args;
     for (auto i = 0; i < argc; i++)
@@ -469,24 +469,6 @@ try
     default_run();
 
     return 0;
-}
-catch (const std::exception &e)
-{
-    std::cerr << e.what() << "\n";
-    //if (auto st = boost::get_error_info<traced_exception>(e))
-        //std::cerr << *st << '\n';
-    return 1;
-}
-catch (...)
-{
-    std::cerr << "Unhandled unknown exception" << "\n";
-    return 1;
-}
-
-int main(int argc, char *argv[])
-{
-    auto r = main1(argc, argv);
-    return r;
 }
 
 void check_spec_file()

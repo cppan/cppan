@@ -10,6 +10,7 @@ file(GLOB cppan_src "*.cpp" "*.h" "*.rc")
 
 add_executable(client ${cppan_src})
 target_link_libraries(client common
+    pvt.egorpugin.primitives.sw.main
     pvt.cppan.demo.boost.program_options
     pvt.cppan.demo.yhirose.cpp_linenoise
 )

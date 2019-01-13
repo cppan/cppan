@@ -149,6 +149,7 @@ cppan_add_package(
         pvt.egorpugin.primitives.pack-master
         pvt.egorpugin.primitives.yaml-master
         pvt.egorpugin.primitives.win32helpers-master
+        pvt.egorpugin.primitives.sw.main-master
 
         pvt.egorpugin.primitives.tools.embedder-master
 
