@@ -66,6 +66,12 @@ void command_init(const Strings &args);
 
 int main(int argc, char *argv[])
 {
+    // globals init
+    Executor e;
+    getExecutor(&e);
+
+    //
+
     Strings args;
     for (auto i = 0; i < argc; i++)
         args.push_back(argv[i]);
@@ -1064,4 +1070,14 @@ ApiResult api_call(const String &cmd, const Strings &args)
     }
 
     return ApiResult::NotHandled;
+}
+
+#ifdef _WIN32
+__declspec(dllexport)
+#else
+__attribute__((visibility("default")))
+#endif
+String getProgramName()
+{
+    return "cppan";
 }
