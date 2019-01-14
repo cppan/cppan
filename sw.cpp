@@ -55,6 +55,7 @@ void build(Solution &s)
         "pub.egorpugin.primitives.lock-master"_dep,
         "pub.egorpugin.primitives.log-master"_dep,
         "pub.egorpugin.primitives.pack-master"_dep,
+        "pub.egorpugin.primitives.patch-master"_dep,
         "pub.egorpugin.primitives.command-master"_dep,
         "pub.egorpugin.primitives.win32helpers-master"_dep,
         "pub.egorpugin.primitives.yaml-master"_dep;
@@ -101,6 +102,7 @@ void build(Solution &s)
     auto &client = p.addTarget<ExecutableTarget>("client");
     client.CPPVersion = CPPLanguageStandard::CPP17;
     client += "src/client/.*"_rr, common,
+        "pub.egorpugin.primitives.sw.main-master"_dep,
         "org.sw.demo.boost.program_options-1"_dep,
         "org.sw.demo.yhirose.cpp_linenoise-master"_dep;
 }
