@@ -19,7 +19,7 @@
 #include "cppan_string.h"
 #include "dependency.h"
 
-#include <primitives/stdcompat/optional.h>
+#include <optional>
 
 struct Config;
 class ProjectPath;
@@ -33,7 +33,7 @@ public:
         Packages dependencies;
 
         // cache
-        optional<StringMap<Package>> include_script_deps;
+        std::optional<StringMap<Package>> include_script_deps;
     };
     using PackageConfigs = std::unordered_map<Package, PackageConfig>;
 
