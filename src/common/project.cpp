@@ -872,6 +872,8 @@ void Project::load(const yaml &root)
                     pkg.ppath = p;
                     if (!d["version"].IsDefined())
                         throw std::runtime_error("dependency: local is present, but version is not: " + p);
+                    if (rd.known_local_packages.find(pkg) != rd.known_local_packages.end())
+                        local_ok = true;
                     pkg.version = d["version"].template as<String>();
                     if (rd.known_local_packages.find(pkg) != rd.known_local_packages.end())
                         local_ok = true;
