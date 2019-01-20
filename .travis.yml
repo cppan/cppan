@@ -13,7 +13,7 @@ os:
 
 branches:
   only:
-    - master
+    - v1
 
 cache:
   directories:
