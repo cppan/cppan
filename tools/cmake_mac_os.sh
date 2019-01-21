@@ -59,6 +59,6 @@ for i in "$@"; do
     eval $i
 done
 
-base $*
+base
 
 echo $BDIR
