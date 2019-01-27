@@ -1940,11 +1940,6 @@ void CMakePrinter::print_src_config_file(const path &fn) const
 
     print_bs_insertion(ctx, p, "post sources", &BuildSystemConfigInsertions::post_sources);
 
-    for (auto &ol : p.options)
-        for (auto &ll : ol.second.link_directories)
-            ctx.addLine("link_directories(" + ll + ")");
-    ctx.emptyLines();
-
     // do this right before target
     if (!d.empty() && p.rc_enabled)
     {
@@ -2355,6 +2350,10 @@ endif()
             {
                 print_target_options(lopts, "link options", "target_link_libraries");
             };
+            auto print_linker_dirs = [&print_target_options](const auto &lopts)
+            {
+                print_target_options(lopts, "link directories", "target_link_directories");
+            };
             /*auto print_set = [&ctx, this](const auto &a, const String &s)
             {
                 if (a.empty())
@@ -2374,13 +2373,14 @@ endif()
                 ctx.decreaseIndent(")");
                 ctx.addLine();
             };*/
-            auto print_options = [&ctx, &ol, &print_defs, &print_compile_opts, &print_linker_opts, &print_include_dirs]
+            auto print_options = [&ctx, &ol, &print_defs, &print_compile_opts, &print_linker_opts, &print_linker_dirs, &print_include_dirs]
             {
                 print_defs(ol.second.definitions);
                 print_include_dirs(ol.second.include_directories);
                 print_compile_opts(ol.second.compile_options);
                 print_linker_opts(ol.second.link_options);
                 print_linker_opts(ol.second.link_libraries);
+                print_linker_dirs(ol.second.link_directories);
 
                 auto print_system = [&ctx](const auto &a, auto f)
                 {
@@ -2398,6 +2398,7 @@ endif()
                 print_system(ol.second.system_compile_options, print_compile_opts);
                 print_system(ol.second.system_link_options, print_linker_opts);
                 print_system(ol.second.system_link_libraries, print_linker_opts);
+                print_system(ol.second.system_link_directories, print_linker_dirs);
             };
 
             if (ol.first == "any")

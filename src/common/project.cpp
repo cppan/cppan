@@ -1466,8 +1466,7 @@ OptionsMap loadOptionsMap(const yaml &root)
         add_opts_common(opt_level.second["compile_options"], option.compile_options, option.system_compile_options);
         add_opts_common(opt_level.second["link_options"], option.link_options, option.system_link_options);
         add_opts_common(opt_level.second["link_libraries"], option.link_libraries, option.system_link_libraries);
-
-        option.link_directories = get_sequence_set<String, String>(opt_level.second, "link_directories");
+        add_opts_common(opt_level.second["link_directories"], option.link_directories, option.system_link_directories);
 
         option.bs_insertions.load(opt_level.second);
     });
@@ -1497,15 +1496,14 @@ void saveOptionsMap(yaml &node, const OptionsMap &m)
         ADD_OPT(compile_options);
         ADD_OPT(link_options);
         ADD_OPT(link_libraries);
+        ADD_OPT(link_directories);
 
         ADD_OPT_SYS(definitions);
         ADD_OPT_SYS(include_directories);
         ADD_OPT_SYS(compile_options);
         ADD_OPT_SYS(link_options);
         ADD_OPT_SYS(link_libraries);
-
-        for (auto &v : o.link_directories)
-            root[ol.first]["link_directories"].push_back(v);
+        ADD_OPT_SYS(link_directories);
 
         auto n = root[ol.first];
         o.bs_insertions.save(n);
@@ -2011,6 +2009,7 @@ String Project::print_cpp2()
         print_obj(g->second.compile_options, g->second.system_compile_options, print_def, "xxx");
         print_obj(g->second.link_options, g->second.system_link_options, print_def, "xxx");
         print_obj(g->second.link_libraries, g->second.system_link_libraries, print_def, "lib");
+        print_obj(g->second.link_directories, g->second.system_link_directories, print_def, "ld");
     };
 
     print_group("any");

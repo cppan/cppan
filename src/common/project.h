@@ -141,12 +141,14 @@ public:
     using CompileOptions = ValueContainer;
     using LinkOptions = ValueContainer;
     using LinkLibraries = ValueContainer;
+    using LinkDirectories = ValueContainer;
 
     using SystemDefinitions = std::map<String, Definitions>;
     using SystemIncludeDirectories = std::map<String, IncludeDirectories>;
     using SystemCompileOptions = std::map<String, CompileOptions>;
     using SystemLinkOptions = std::map<String, LinkOptions>;
     using SystemLinkLibraries = std::map<String, LinkLibraries>;
+    using SystemLinkDirectories = std::map<String, LinkDirectories>;
 
 public:
     Definitions definitions;
@@ -154,14 +156,14 @@ public:
     CompileOptions compile_options;
     LinkOptions link_options;
     LinkLibraries link_libraries;
+    LinkLibraries link_directories;
 
     SystemDefinitions system_definitions;
     SystemIncludeDirectories system_include_directories;
     SystemCompileOptions system_compile_options;
     SystemLinkOptions system_link_options;
     SystemLinkLibraries system_link_libraries;
-
-    StringSet link_directories;
+    SystemLinkDirectories system_link_directories;
 
     BuildSystemConfigInsertions bs_insertions;
 };
