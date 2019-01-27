@@ -13,8 +13,9 @@ function base() {
     #echo "BDIR=$BDIR"
 
     cmake -H. -B$BDIR \
-        -DBISON_EXECUTABLE=/usr/local/Cellar/bison/3.0.4_1/bin/bison \
+        -DBISON_EXECUTABLE=/usr/local/Cellar/bison/3.2.2/bin/bison \
         -DFLEX_EXECUTABLE=/usr/local/Cellar/flex/2.6.4/bin/flex \
+        -DCPPAN_EXECUTABLE=`which cppan` \
         $COMPILER \
         $GENERATOR \
         $BUILD_TYPE \
@@ -35,8 +36,8 @@ function gcc() {
 
 function clang() {
     BDIR="${BDIR}_clang"
-    CLANG=/usr/local/Cellar/llvm/6.0.0/bin/clang-6.0
-    COMPILER="-DCMAKE_C_COMPILER=$CLANG -DCMAKE_CXX_COMPILER=$CLANG"
+    CLANG=/usr/local/Cellar/llvm/7.0.0/bin/clang
+    COMPILER="-DCMAKE_C_COMPILER=$CLANG -DCMAKE_CXX_COMPILER=$CLANG++"
 }
 
 function ninja() {
