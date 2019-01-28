@@ -1,5 +1,5 @@
 #pragma sw require header pub.egorpugin.primitives.tools.embedder-master
-#pragma sw require header org.sw.demo.lexxmark.winflexbison.bison-master
+//#pragma sw require header org.sw.demo.lexxmark.winflexbison.bison-master
 
 void configure(Solution &s)
 {
@@ -62,8 +62,8 @@ void build(Solution &s)
 
     time_t v;
     time(&v);
-    common.fileWriteSafe("stamp.h.in", "\"" + std::to_string(v) + "\"", true);
-    embed(common, "src/inserts/inserts.cpp.in");
+    common.writeFileSafe("stamp.h.in", "\"" + std::to_string(v) + "\"");
+    embed("pub.egorpugin.primitives.tools.embedder-master"_dep, common, "src/inserts/inserts.cpp.in");
 
     // at the moment flex&bison generated files are present in the build tree,
     // so build passes without generation stage
