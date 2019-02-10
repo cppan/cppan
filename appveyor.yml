@@ -6,7 +6,6 @@ platform:
 
 cache:
   - c:/Users/appveyor/.sw
-  - .sw
   
 branches:
   only:
@@ -27,10 +26,12 @@ before_build:
 build_script:
   - sw -platform %platform% build
 
+artifacts:
+  - path: cppan.zip
+    name: cppan-$(APPVEYOR_BUILD_VERSION)
+
+after_build:
+  - 7z a cppan.zip %APPVEYOR_BUILD_FOLDER%\.sw\windows_*_msvc_*_static_Release*\*.exe
+  
 #test_script:
   #- ctest -C Release
-
-#artifacts:
-  #- path: build\bin\Release
-  #- path: build
-    #name: cppan-$(APPVEYOR_BUILD_VERSION)
