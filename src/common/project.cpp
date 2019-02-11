@@ -1430,7 +1430,7 @@ OptionsMap loadOptionsMap(const yaml &root)
     {
         auto ol = opt_level.first.template as<String>();
         if (!(ol == "any" || ol == "static" || ol == "shared"))
-            throw std::runtime_error("Wrong option level dicrective");
+            throw std::runtime_error("Wrong option level directive. Must be one of any, static or shared");
         if (!opt_level.second.IsMap())
             throw std::runtime_error("'" + ol + "' should be a map");
 
