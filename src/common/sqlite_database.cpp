@@ -61,7 +61,6 @@ int loadOrSaveDb(sqlite3 *pInMemory, const char *zFilename, int isSave)
         rc = sqlite3_open(zFilename, &pFile);
     if (rc == SQLITE_OK)
     {
-
         /* If this is a 'load' operation (isSave==0), then data is copied
         ** from the database file just opened to database pInMemory.
         ** Otherwise, if this is a 'save' operation (isSave==1), then data

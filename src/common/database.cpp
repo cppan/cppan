@@ -338,6 +338,11 @@ Database::Database(const String &name, const TableDescriptors &tds)
 void Database::open(bool read_only)
 {
     db = std::make_unique<SqliteDatabase>(fn.string(), read_only);
+
+    // prevent SQLITE_BUSY rc
+    // hope 1 min is enough to wait for write operation
+    // in multithreaded environment
+    sqlite3_busy_timeout(db->getDb(), 60000);
 }
 
 void Database::recreate()
@@ -345,7 +350,7 @@ void Database::recreate()
     db.reset();
     ScopedFileLock lock(fn);
     fs::remove(fn);
-    db = std::make_unique<SqliteDatabase>(fn.string());
+    open();
     for (auto &td : tds)
         db->execute(td.query);
     created = true;
