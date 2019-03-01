@@ -10,30 +10,31 @@
 
 if (FLEX_FOUND AND BISON_FOUND)
     BISON_TARGET(grammar
-        "${CMAKE_CURRENT_SOURCE_DIR}/grammar.yy"
-        "${CMAKE_CURRENT_SOURCE_DIR}/grammar.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/bazel.yy"
+        "${CMAKE_CURRENT_BINARY_DIR}/bazel.yy.cpp"
+        COMPILE_FLAGS "--defines=${CMAKE_CURRENT_BINARY_DIR}/bazel.yy.hpp"
     )
     FLEX_TARGET(lexer
-        "${CMAKE_CURRENT_SOURCE_DIR}/lexer.ll"
-        "${CMAKE_CURRENT_SOURCE_DIR}/lexer.cpp"
-        COMPILE_FLAGS "--header-file=${CMAKE_CURRENT_SOURCE_DIR}/lexer.h -L"
+        "${CMAKE_CURRENT_SOURCE_DIR}/bazel.ll"
+        "${CMAKE_CURRENT_BINARY_DIR}/bazel.ll.cpp"
+        COMPILE_FLAGS "--header-file=${CMAKE_CURRENT_BINARY_DIR}/lexer.h -L"
     )
     ADD_FLEX_BISON_DEPENDENCY(lexer grammar)
 
     set(parser_src
         ${BISON_grammar_OUTPUTS}
         ${FLEX_lexer_OUTPUTS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/lexer.h
+        ${CMAKE_CURRENT_BINARY_DIR}/lexer.h
     )
-    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lexer.h PROPERTIES GENERATED TRUE)
+    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/lexer.h PROPERTIES GENERATED TRUE)
 
     set(bazel_parser_src
         bazel.cpp
         bazel.h
         driver.cpp
         driver.h
-	    grammar.yy
-	    lexer.ll
+        bazel.yy
+        bazel.ll
     )
 else()
     file(GLOB parser_src "*")
@@ -41,6 +42,7 @@ else()
 endif()
 
 add_library(bazel_parser ${parser_src} ${bazel_parser_src})
+target_include_directories(bazel_parser PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(bazel_parser
     common
     pvt.cppan.demo.imageworks.pystring

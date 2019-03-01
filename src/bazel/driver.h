@@ -21,7 +21,7 @@
 
 #include "bazel.h"
 
-#include <bazel/grammar.hpp>
+#include <bazel.yy.hpp>
 
 class BazelParserDriver
 {

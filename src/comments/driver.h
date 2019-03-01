@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include <comments/grammar.hpp>
+#include <comments.yy.hpp>
 
 class CommentsParserDriver
 {

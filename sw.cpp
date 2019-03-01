@@ -1,5 +1,5 @@
 #pragma sw require header pub.egorpugin.primitives.tools.embedder-master
-//#pragma sw require header org.sw.demo.lexxmark.winflexbison.bison-master
+#pragma sw require header org.sw.demo.lexxmark.winflexbison.bison-master
 
 void configure(Build &s)
 {
@@ -65,42 +65,26 @@ void build(Solution &s)
     common.writeFileSafe("stamp.h.in", "\"" + std::to_string(v) + "\"");
     embed("pub.egorpugin.primitives.tools.embedder-master"_dep, common, "src/inserts/inserts.cpp.in");
 
-    // at the moment flex&bison generated files are present in the build tree,
-    // so build passes without generation stage
+    auto [fc,bc] = gen_flex_bison("org.sw.demo.lexxmark.winflexbison-master"_dep, common,
+        "src/bazel/bazel.ll", "src/bazel/bazel.yy",
+                   {"--prefix=ll_bazel", "--header-file=" + normalize_path(common.BinaryDir / "bazel/lexer.h")});
+    fc->addOutput(common.BinaryDir / "bazel/lexer.h");
 
-    /*auto flex_bison = [&common](const std::string &name)
-    {
-        fs::create_directories(common.BinaryDir / ("src/" + name));
-
-        // flex/bison
-        {
-            auto c = std::make_shared<Command>();
-            c->program = "bison.exe";
-            c->args.push_back("-d");
-            c->args.push_back("-o" + (common.BinaryDir / ("src/" + name + "/grammar.cpp")).string());
-            c->args.push_back((common.SourceDir / ("src/" + name + "/grammar.yy")).string());
-            c->addInput(common.SourceDir / ("src/" + name + "/grammar.yy"));
-            c->addOutput(common.BinaryDir / ("src/" + name + "/grammar.cpp"));
-            common += path(common.BinaryDir / ("src/" + name + "/grammar.cpp"));
-        }
-        {
-            auto c = std::make_shared<Command>();
-            c->program = "flex.exe";
-            c->args.push_back("--header-file=" + (common.BinaryDir / ("src/" + name + "/lexer.h")).string());
-            c->args.push_back("-o" + (common.BinaryDir / ("src/" + name + "/lexer.cpp")).string());
-            c->args.push_back((common.SourceDir / ("src/" + name + "/lexer.ll")).string());
-            c->addInput(common.SourceDir / ("src/" + name + "/lexer.ll"));
-            c->addOutput(common.BinaryDir / ("src/" + name + "/lexer.h"));
-            c->addOutput(common.BinaryDir / ("src/" + name + "/lexer.cpp"));
-            common += path(common.BinaryDir / ("src/" + name + "/lexer.cpp"));
-        }
-    };*/
-
-    //flex_bison("bazel");
-    //flex_bison("comments");
+    auto [fc2,bc2] = gen_flex_bison("org.sw.demo.lexxmark.winflexbison-master"_dep, common,
+        "src/comments/comments.ll", "src/comments/comments.yy",
+                   {"--prefix=ll_comments", "--header-file=" + normalize_path(common.BinaryDir / "comments/lexer.h")});
+    fc2->addOutput(common.BinaryDir / "comments/lexer.h");
 
     auto &client = p.addTarget<ExecutableTarget>("client");
     client.CPPVersion = CPPLanguageStandard::CPP17;
+
+    // for rc.exe
+    client += "VERSION_MAJOR=0"_d;
+    client += "VERSION_MINOR=2"_d;
+    client += "VERSION_PATCH=5"_d;
+    client += "BUILD_NUMBER=0"_d;
+    client += "CPPAN_VERSION_STRING=0.2.5"_d;
+
     client += "src/client/.*"_rr, common,
         "pub.egorpugin.primitives.sw.main-master"_dep,
         "org.sw.demo.boost.program_options-1"_dep,
