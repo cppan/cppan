@@ -162,6 +162,23 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
+            if (cmd == "parse-configure-ac2")
+            {
+                if (args.size() != 3)
+                {
+                    if (fs::exists("configure.ac"))
+                    {
+                        process_configure_ac2("configure.ac");
+                        return 0;
+                    }
+                    std::cout << "invalid number of arguments\n";
+                    std::cout << "usage: cppan parse-configure-ac2 configure.ac\n";
+                    return 1;
+                }
+                process_configure_ac2(args[2]);
+                return 0;
+            }
+
             if (cmd == "parse-bazel")
             {
                 void process_bazel(const path &p, const std::string &libname = "cc_library", const std::string &binname = "cc_binary");

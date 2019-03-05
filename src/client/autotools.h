@@ -19,3 +19,4 @@
 #include "filesystem.h"
 
 void process_configure_ac(const path &p);
+void process_configure_ac2(const path &p);

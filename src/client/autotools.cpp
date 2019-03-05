@@ -34,8 +34,18 @@ struct if_expr
 {
     struct if_action
     {
+        enum sign_type
+        {
+            S_UNK,
+
+            S_EQ,
+            S_NE,
+            S_LT,
+            S_GT,
+        };
+
         String var;
-        bool equ;
+        int sign;
         String value;
         String action;
         int start;
@@ -68,6 +78,7 @@ struct ac_processor
     void try_add(command &c);
 
     void output();
+    void output2();
     void process();
     void process_AC_LANG(command &c);
     void process_AC_CHECK_FUNCS(command &c);
@@ -203,10 +214,21 @@ auto parse_conditions(String f)
 
         if_expr::if_action a;
         a.var = var;
-        a.equ = sign == "=";
         a.value = val;
         a.start = (int)(m[0].first - s.begin());
-        if (sign != "=" && sign != "!=") // TODO: implement '-gt' sign
+
+        if (sign == "=")
+            a.sign = if_expr::if_action::S_EQ;
+        else if (sign == "!=")
+            a.sign = if_expr::if_action::S_NE;
+        else if (sign == "-lt")
+            a.sign = if_expr::if_action::S_LT;
+        else if (sign == "-gt")
+            a.sign = if_expr::if_action::S_GT;
+        else
+            a.sign = if_expr::if_action::S_UNK;
+
+        if (a.sign == if_expr::if_action::S_UNK) // TODO: implement other signs (-le, -ge)
             std::cerr << "Unknown sign " << sign << "\n";
         else
         {
@@ -229,6 +251,13 @@ void process_configure_ac(const path &p)
     proc.output();
 }
 
+void process_configure_ac2(const path &p)
+{
+    ac_processor proc(p);
+    proc.process();
+    proc.output2();
+}
+
 ac_processor::ac_processor(const path &p)
 {
     file = read_file(p);
@@ -240,10 +269,19 @@ ac_processor::ac_processor(const path &p)
     conditions = parse_conditions(file);
 }
 
+void print_checks2(primitives::CppContext &ctx, const ChecksSet &checks, const String &name);
+
 void ac_processor::output()
 {
     checks.save(root);
     std::cout << dump_yaml_config(root);
+}
+
+void ac_processor::output2()
+{
+    primitives::CppContext ctx;
+    print_checks2(ctx, checks.checks, "x");
+    std::cout << ctx.getText();
 }
 
 void prepare_type(String &t)
@@ -341,6 +379,7 @@ void ac_processor::process()
         SILENCE(AC_CHECK_FILE);
         SILENCE(AC_CHECK_TOOL);
         SILENCE(AC_MSG_ERROR);
+        SILENCE(AC_MSG_FAILURE);
         SILENCE(AC_TRY_COMMAND);
 
         // specific checks
@@ -429,6 +468,8 @@ void ac_processor::ifdef_add(command &c)
             ; // this is a printer
         else if (cmd == "AC_MSG_ERROR")
             ; // this is a printer
+        else if (cmd == "AC_MSG_FAILURE")
+            ; // this is a printer
         else if (cmd == "AC_LANG_SOURCE")
         {
             auto params = parse_arguments(c.params[0].substr(cmd.size() + 1));
@@ -456,6 +497,8 @@ void ac_processor::ifdef_add(command &c)
             if (cmd == "AC_MSG_RESULT")
                 ; // this is a printer
             else if (cmd == "AC_MSG_ERROR")
+                ; // this is a printer
+            else if (cmd == "AC_MSG_FAILURE")
                 ; // this is a printer
             else if (cmd == "AC_DEFINE")
             {
@@ -498,9 +541,9 @@ void ac_processor::ifdef_add(command &c)
                         var = params[0];
 
                         if (value == act.value)
-                            invert = !act.equ;
+                            invert = act.sign == if_expr::if_action::S_NE;
                         else
-                            invert = act.equ;
+                            invert = act.sign == if_expr::if_action::S_EQ;
                     }
 
                     if (ifthen.size() > 1)
@@ -513,9 +556,9 @@ void ac_processor::ifdef_add(command &c)
                         }
 
                         if (value == act.value)
-                            invert = act.equ;
+                            invert = act.sign == if_expr::if_action::S_EQ;
                         else
-                            invert = !act.equ;
+                            invert = act.sign == if_expr::if_action::S_NE;
                     }
                 }
             }
@@ -531,6 +574,8 @@ void ac_processor::ifdef_add(command &c)
             if (cmd == "AC_MSG_RESULT")
                 ; // this is a printer
             else if (cmd == "AC_MSG_ERROR")
+                ; // this is a printer
+            else if (cmd == "AC_MSG_FAILURE")
                 ; // this is a printer
             else if (cmd == "AC_DEFINE")
             {
@@ -585,6 +630,8 @@ void ac_processor::try_add(command &c)
             if (cmd == "AC_MSG_RESULT")
                 ; // this is a printer
             else if (cmd == "AC_MSG_ERROR")
+                ; // this is a printer
+            else if (cmd == "AC_MSG_FAILURE")
                 ; // this is a printer
             else if (cmd == "AC_DEFINE")
             {
@@ -713,6 +760,8 @@ void ac_processor::process_AC_CHECK_HEADER(command &c)
             if (cmd == "AC_MSG_RESULT")
                 ; // this is a printer
             else if (cmd == "AC_MSG_ERROR")
+                ; // this is a printer
+            else if (cmd == "AC_MSG_FAILURE")
                 ; // this is a printer
             else if (cmd == "AC_DEFINE")
             {

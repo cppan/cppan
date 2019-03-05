@@ -1589,7 +1589,7 @@ String Project::print_cpp()
 
     if (include_directories.private_.size() > additional_include_dirs_private.size())
     {
-        ctx.addLine(name + ".Private +=");
+        ctx.addLine(name + " +=");
         String s;
         for (auto &t : include_directories.private_)
         {
@@ -1632,7 +1632,7 @@ String Project::print_cpp()
         auto print_def = [&ctx, &name](auto &k, auto &v)
         {
             if (k == "private")
-                ctx.addLine(name + ".Private += \"" + v + "\"_d;");
+                ctx.addLine(name + " += \"" + v + "\"_d;");
             else if (k == "public")
                 ctx.addLine(name + ".Public += \"" + v + "\"_d;");
             else if (k == "interface")
@@ -1672,7 +1672,7 @@ String Project::print_cpp()
         auto print_def = [&ctx, &name](auto &k, auto &v)
         {
             if (k == "private")
-                ctx.addLine(name + ".Private += sw::Shared, \"" + v + "\"_d;");
+                ctx.addLine(name + " += sw::Shared, \"" + v + "\"_d;");
             else if (k == "public")
                 ctx.addLine(name + ".Public += sw::Shared, \"" + v + "\"_d;");
             else if (k == "interface")
@@ -1712,7 +1712,7 @@ String Project::print_cpp()
         auto print_def = [&ctx, &name](auto &k, auto &v)
         {
             if (k == "private")
-                ctx.addLine(name + ".Private += sw::Static, \"" + v + "\"_d;");
+                ctx.addLine(name + " += sw::Static, \"" + v + "\"_d;");
             else if (k == "public")
                 ctx.addLine(name + ".Public += sw::Static, \"" + v + "\"_d;");
             else if (k == "interface")
@@ -1809,7 +1809,7 @@ String Project::print_cpp()
     return ctx.getText();
 }
 
-#include <iostream>
+void print_checks2(primitives::CppContext &ctx, const ChecksSet &checks, const String &name);
 
 String Project::print_cpp2()
 {
@@ -1902,7 +1902,7 @@ String Project::print_cpp2()
 
     if (include_directories.private_.size() > additional_include_dirs_private.size())
     {
-        ctx.addLine(name + ".Private +=");
+        ctx.addLine(name + " +=");
         String s;
         for (auto &t : include_directories.private_)
         {
@@ -1962,7 +1962,7 @@ String Project::print_cpp2()
     auto print_def = [&ctx, &name, &escape_str](auto &k, auto &v, const String &ending, const String &type = {})
     {
         if (k == "private")
-            ctx.addLine(name + ".Private += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_" + ending + ";");
+            ctx.addLine(name + " += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_" + ending + ";");
         else if (k == "public")
             ctx.addLine(name + ".Public += " + (type.empty() ? "" : (type + ", ")) + "\"" + escape_str(v) + "\"_" + ending + ";");
         else if (k == "interface")
@@ -2036,11 +2036,19 @@ String Project::print_cpp2()
     ctx.endBlock();
     ctx.emptyLines();
 
-    if (checks.checks.size() > 2)
+    print_checks2(ctx, checks.checks, name);
+
+    //ctx.splitLines();
+    return ctx.getText();
+}
+
+void print_checks2(primitives::CppContext &ctx, const ChecksSet &checks, const String &name)
+{
+    if (checks.size() > 2)
     {
         ctx.beginBlock("void check(Checker &c)");
         ctx.addLine("auto &s = c.addSet(\"" + name + "\");");
-        for (auto &c : checks.checks)
+        for (auto &c : checks)
         {
             switch (c->getInformation().type)
             {
@@ -2084,7 +2092,4 @@ String Project::print_cpp2()
         }
         ctx.endBlock();
     }
-
-    //ctx.splitLines();
-    return ctx.getText();
 }
