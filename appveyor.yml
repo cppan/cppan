@@ -31,7 +31,7 @@ artifacts:
     name: cppan-$(APPVEYOR_BUILD_VERSION)
 
 after_build:
-  - 7z a cppan.zip %APPVEYOR_BUILD_FOLDER%\.sw\windows_*_msvc_*_static_Release*\*.exe
+  - 7z a cppan.zip %APPVEYOR_BUILD_FOLDER%\.sw\windows_*_msvc_*_static_Release\*.exe
   
 #test_script:
   #- ctest -C Release
