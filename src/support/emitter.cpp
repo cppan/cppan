@@ -14,23 +14,33 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "emitter.h"
 
-#include <primitives/context.h>
-#include <primitives/string.h>
-
-class CMakeContext : public primitives::Context
+void CMakeEmitter::if_(const String &s)
 {
-public:
-    void if_(const String &s);
-    void elseif(const String &s);
-    void else_();
-    void endif();
+    addLine("if (" + s + ")");
+    increaseIndent();
+}
 
-    // set()
+void CMakeEmitter::elseif(const String &s)
+{
+    decreaseIndent();
+    emptyLines(0);
+    addLine("elseif(" + s + ")");
+    increaseIndent();
+}
 
-    // TODO: add
-    //  beginOnce();
-    //  endOnce()
-    // based on ${CMAKE_CURRENT_LIST_FILE} ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_LINE}
-};
+void CMakeEmitter::else_()
+{
+    decreaseIndent();
+    emptyLines(0);
+    addLine("else()");
+    increaseIndent();
+}
+
+void CMakeEmitter::endif()
+{
+    decreaseIndent();
+    emptyLines(0);
+    addLine("endif()");
+}

@@ -269,7 +269,7 @@ ac_processor::ac_processor(const path &p)
     conditions = parse_conditions(file);
 }
 
-void print_checks2(primitives::CppContext &ctx, const ChecksSet &checks, const String &name);
+void print_checks2(primitives::CppEmitter &ctx, const ChecksSet &checks, const String &name);
 
 void ac_processor::output()
 {
@@ -279,7 +279,7 @@ void ac_processor::output()
 
 void ac_processor::output2()
 {
-    primitives::CppContext ctx;
+    primitives::CppEmitter ctx;
     print_checks2(ctx, checks.checks, "x");
     std::cout << ctx.getText();
 }

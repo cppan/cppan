@@ -47,7 +47,7 @@ void build(Solution &s)
 
         "pub.egorpugin.primitives.string-master"_dep,
         "pub.egorpugin.primitives.filesystem-master"_dep,
-        "pub.egorpugin.primitives.context-master"_dep,
+        "pub.egorpugin.primitives.emitter-master"_dep,
         "pub.egorpugin.primitives.date_time-master"_dep,
         "pub.egorpugin.primitives.executor-master"_dep,
         "pub.egorpugin.primitives.hash-master"_dep,

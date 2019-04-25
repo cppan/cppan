@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include "context.h"
+#include "emitter.h"
 #include "cppan_string.h"
 #include "filesystem.h"
 #include "yaml.h"
 
-class CMakeContext;
+class CMakeEmitter;
 struct Package;
 
 struct CheckParameters
@@ -36,10 +36,10 @@ struct CheckParameters
     // it is possible only in sequential mode
     bool all_includes = false;
 
-    void writeHeadersBefore(CMakeContext &ctx) const;
-    void writeHeadersAfter(CMakeContext &ctx) const;
-    void writeBefore(CMakeContext &ctx) const;
-    void writeAfter(CMakeContext &ctx) const;
+    void writeHeadersBefore(CMakeEmitter &ctx) const;
+    void writeHeadersAfter(CMakeEmitter &ctx) const;
+    void writeBefore(CMakeEmitter &ctx) const;
+    void writeAfter(CMakeEmitter &ctx) const;
     void load(const yaml &n);
     void save(yaml &n) const;
     bool empty() const;
@@ -97,7 +97,7 @@ public:
     Value getValue() const { return value; }
     String getMessage() const { return message; }
 
-    virtual void writeCheck(CMakeContext &/*ctx*/) const {}
+    virtual void writeCheck(CMakeEmitter &/*ctx*/) const {}
     virtual void save(yaml &/*root*/) const {}
 
     void setValue(const Value &v) { value = v; }
@@ -186,16 +186,16 @@ struct Checks
     void save(yaml &root) const;
     String save() const;
 
-    void write_checks(CMakeContext &ctx, const StringSet &prefixes = StringSet()) const;
-    void write_definitions(CMakeContext &ctx, const Package &d, const StringSet &prefixes = StringSet()) const;
+    void write_checks(CMakeEmitter &ctx, const StringSet &prefixes = StringSet()) const;
+    void write_definitions(CMakeEmitter &ctx, const Package &d, const StringSet &prefixes = StringSet()) const;
 
-    void write_parallel_checks_for_workers(CMakeContext &ctx) const;
+    void write_parallel_checks_for_workers(CMakeEmitter &ctx) const;
     void read_parallel_checks_for_workers(const path &dir);
 
     void remove_known_vars(const std::set<String> &known_vars);
     std::vector<Checks> scatter(int N) const;
     void print_values() const;
-    void print_values(CMakeContext &ctx) const;
+    void print_values(CMakeEmitter &ctx) const;
 
     Checks &operator+=(const Checks &rhs);
 

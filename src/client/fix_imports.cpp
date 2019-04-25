@@ -17,7 +17,7 @@
 #include "fix_imports.h"
 
 #include <config.h>
-#include <context.h>
+#include <emitter.h>
 #include <project_path.h>
 
 #include <printers/cmake.h>
@@ -31,7 +31,7 @@
 
 String fix_imports(const Strings &lines_old, const String &old_target, const String &new_target)
 {
-    CMakeContext ctx;
+    CMakeEmitter ctx;
     ctx.addLine("if (NOT TARGET " + new_target + ")");
     ctx.increaseIndent();
     for (auto &line1 : lines_old)
@@ -124,7 +124,7 @@ void fix_imports(const String &target, const path &aliases_file, const path &old
     auto fix = [&aliases_s](const auto &lines, const auto &dep)
     {
         const auto &tgt = dep.target_name_hash;
-        CMakeContext ctx;
+        CMakeEmitter ctx;
 
         StringSet aliases;
         {
@@ -146,7 +146,7 @@ void fix_imports(const String &target, const path &aliases_file, const path &old
         return ctx.getText();
     };
 
-    CMakeContext ctx;
+    CMakeEmitter ctx;
     file_header(ctx, dep);
     if (exe)
     {

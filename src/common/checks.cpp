@@ -518,7 +518,7 @@ String Checks::save() const
     return dump_yaml_config(root);
 }
 
-void invert(CMakeContext &ctx, const CheckPtr &c)
+void invert(CMakeEmitter &ctx, const CheckPtr &c)
 {
     ctx.addLine();
     ctx.addLine("if (" + c->getVariable() + ")");
@@ -528,7 +528,7 @@ void invert(CMakeContext &ctx, const CheckPtr &c)
     ctx.addLine("endif()");
 }
 
-void Checks::write_checks(CMakeContext &ctx, const StringSet &prefixes) const
+void Checks::write_checks(CMakeEmitter &ctx, const StringSet &prefixes) const
 {
     for (auto &c : checks)
     {
@@ -652,7 +652,7 @@ void Checks::write_checks(CMakeContext &ctx, const StringSet &prefixes) const
     }
 }
 
-void Checks::write_parallel_checks_for_workers(CMakeContext &ctx) const
+void Checks::write_parallel_checks_for_workers(CMakeEmitter &ctx) const
 {
     for (auto &c : checks)
     {
@@ -761,7 +761,7 @@ void Checks::read_parallel_checks_for_workers(const path &dir)
     }
 }
 
-void Checks::write_definitions(CMakeContext &ctx, const Package &d, const StringSet &prefixes) const
+void Checks::write_definitions(CMakeEmitter &ctx, const Package &d, const StringSet &prefixes) const
 {
     const auto m = [&d]
     {
@@ -900,7 +900,7 @@ void Checks::print_values() const
         //LOG_INFO(logger, v->printStatus());
 }
 
-void Checks::print_values(CMakeContext &ctx) const
+void Checks::print_values(CMakeEmitter &ctx) const
 {
     std::map<String, CheckPtr> checks_to_print;
     for (auto &c : checks)
@@ -998,7 +998,7 @@ String CheckParameters::getHash() const
     return h;
 }
 
-void CheckParameters::writeHeadersBefore(CMakeContext &ctx) const
+void CheckParameters::writeHeadersBefore(CMakeEmitter &ctx) const
 {
     if (!headers.empty())
     {
@@ -1010,13 +1010,13 @@ void CheckParameters::writeHeadersBefore(CMakeContext &ctx) const
     }
 }
 
-void CheckParameters::writeHeadersAfter(CMakeContext &ctx) const
+void CheckParameters::writeHeadersAfter(CMakeEmitter &ctx) const
 {
     if (!headers.empty())
         ctx.addLine("set(CMAKE_EXTRA_INCLUDE_FILES ${_oh})");
 }
 
-void CheckParameters::writeBefore(CMakeContext &ctx) const
+void CheckParameters::writeBefore(CMakeEmitter &ctx) const
 {
     if (!definitions.empty())
     {
@@ -1052,7 +1052,7 @@ void CheckParameters::writeBefore(CMakeContext &ctx) const
     }
 }
 
-void CheckParameters::writeAfter(CMakeContext &ctx) const
+void CheckParameters::writeAfter(CMakeEmitter &ctx) const
 {
     if (!definitions.empty())
         ctx.addLine("set(CMAKE_REQUIRED_DEFINITIONS ${_od})");

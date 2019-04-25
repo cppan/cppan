@@ -21,10 +21,10 @@
 
 #include <package_store.h>
 
-class CMakeContext;
+class CMakeEmitter;
 
-void file_header(CMakeContext &ctx, const Package &d, bool root = false);
-void file_footer(CMakeContext &ctx, const Package &d);
+void file_header(CMakeEmitter &ctx, const Package &d, bool root = false);
+void file_footer(CMakeEmitter &ctx, const Package &d);
 
 struct CMakePrinter : Printer
 {
@@ -57,21 +57,21 @@ private:
     void print_obj_generate_file(const path &fn) const;
     void print_obj_export_file(const path &fn) const;
     void print_obj_build_file(const path &fn) const;
-    void print_bs_insertion(CMakeContext &ctx, const Project &p, const String &name, const String BuildSystemConfigInsertions::*i) const;
-    void print_source_groups(CMakeContext &ctx) const;
+    void print_bs_insertion(CMakeEmitter &ctx, const Project &p, const String &name, const String BuildSystemConfigInsertions::*i) const;
+    void print_source_groups(CMakeEmitter &ctx) const;
 
-    void print_build_dependencies(CMakeContext &ctx, const String &target) const;
-    void print_copy_dependencies(CMakeContext &ctx, const String &target) const;
+    void print_build_dependencies(CMakeEmitter &ctx, const String &target) const;
+    void print_copy_dependencies(CMakeEmitter &ctx, const String &target) const;
 
-    void print_references(CMakeContext &ctx) const;
-    void print_settings(CMakeContext &ctx) const;
+    void print_references(CMakeEmitter &ctx) const;
+    void print_settings(CMakeEmitter &ctx) const;
 
     bool must_update_contents(const path &fn) const;
     void write_if_older(const path &fn, const String &s) const;
 };
 
 template <class F>
-void add_aliases(primitives::Context &ctx, const Package &d, bool all, const StringSet &aliases, F &&f)
+void add_aliases(primitives::Emitter &ctx, const Package &d, bool all, const StringSet &aliases, F &&f)
 {
     auto add_line = [&ctx](const auto &s)
     {
@@ -111,14 +111,14 @@ void add_aliases(primitives::Context &ctx, const Package &d, bool all, const Str
 }
 
 template <class F>
-void add_aliases(primitives::Context &ctx, const Package &d, bool all, F &&f)
+void add_aliases(primitives::Emitter &ctx, const Package &d, bool all, F &&f)
 {
     const auto &aliases = rd[d].config->getDefaultProject().aliases;
     add_aliases(ctx, d, all, aliases, std::forward<F>(f));
 }
 
 template <class F>
-void add_aliases(primitives::Context &ctx, const Package &d, F &&f)
+void add_aliases(primitives::Emitter &ctx, const Package &d, F &&f)
 {
     add_aliases(ctx, d, true, std::forward<F>(f));
 }

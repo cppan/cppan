@@ -19,7 +19,7 @@
 #include "printers/printer.h"
 
 #include <boost/algorithm/string.hpp>
-#include <primitives/context.h>
+#include <primitives/emitter.h>
 
 #include <memory>
 
@@ -27,11 +27,11 @@ extern const std::map<int, Check::Information> check_information;
 
 class CheckParametersScopedWriter
 {
-    CMakeContext &ctx;
+    CMakeEmitter &ctx;
     const CheckParameters &p;
     bool with_headers;
 public:
-    CheckParametersScopedWriter(CMakeContext &ctx, const CheckParameters &p, bool with_headers = false)
+    CheckParametersScopedWriter(CMakeEmitter &ctx, const CheckParameters &p, bool with_headers = false)
         : ctx(ctx), p(p), with_headers(with_headers)
     {
         if (with_headers)
@@ -72,7 +72,7 @@ public:
         root[information.cppan_key].push_back(y);
     }
 
-    void writeCheck(CMakeContext &ctx) const override
+    void writeCheck(CMakeEmitter &ctx) const override
     {
         CheckParametersScopedWriter p(ctx, parameters);
         ctx.addLine(information.function + "(" + getData() + " " + getVariable() + ")");
@@ -136,7 +136,7 @@ public:
 
     virtual ~CheckType() {}
 
-    void writeCheck(CMakeContext &ctx) const override
+    void writeCheck(CMakeEmitter &ctx) const override
     {
         CheckParametersScopedWriter p(ctx, parameters, true);
         ctx.addLine(information.function + "(\"" + getData() + "\" " + getVariable() + ")");
@@ -164,7 +164,7 @@ public:
 
     virtual ~CheckStructMember() {}
 
-    void writeCheck(CMakeContext &ctx) const override
+    void writeCheck(CMakeEmitter &ctx) const override
     {
         CheckParametersScopedWriter p(ctx, parameters);
         ctx.addLine(information.function + "(\"" + struct_ + "\" \"" + getData() + "\" \"");
@@ -274,7 +274,7 @@ public:
 
     virtual ~CheckSymbol() {}
 
-    void writeCheck(CMakeContext &ctx) const override
+    void writeCheck(CMakeEmitter &ctx) const override
     {
         CheckParametersScopedWriter p(ctx, parameters);
         ctx.addLine(information.function + "(\"" + getData() + "\" \"");
@@ -323,7 +323,7 @@ public:
         root[information.cppan_key].push_back(n);
     }
 
-    void writeCheck(CMakeContext &ctx) const override
+    void writeCheck(CMakeEmitter &ctx) const override
     {
         static const Strings headers = {
             "HAVE_SYS_TYPES_H",

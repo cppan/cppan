@@ -389,13 +389,13 @@ void Patch::patchSources(const Project &prj, const Files &files) const
             continue;
 
         auto r = primitives::patch::patch(t, f);
-        if (!r)
+        if (!r.first)
         {
-            LOG_ERROR(logger, "cannot apply patch to: " << s);
+            LOG_ERROR(logger, "cannot apply patch to: " << s << ": " << r.second);
             continue;
         }
 
-        write_file(fn, *r);
+        write_file(fn, r.second);
         write_file(fn_patch, t); // save orig
     }
 
@@ -1513,7 +1513,7 @@ void saveOptionsMap(yaml &node, const OptionsMap &m)
 
 String Project::print_cpp()
 {
-    primitives::CppContext ctx;
+    primitives::CppEmitter ctx;
 
     String name = pkg.ppath.back();
 
@@ -1809,11 +1809,11 @@ String Project::print_cpp()
     return ctx.getText();
 }
 
-void print_checks2(primitives::CppContext &ctx, const ChecksSet &checks, const String &name);
+void print_checks2(primitives::CppEmitter &ctx, const ChecksSet &checks, const String &name);
 
 String Project::print_cpp2()
 {
-    primitives::CppContext ctx;
+    primitives::CppEmitter ctx;
 
     String name = pkg.ppath.back();
 
@@ -2042,7 +2042,7 @@ String Project::print_cpp2()
     return ctx.getText();
 }
 
-void print_checks2(primitives::CppContext &ctx, const ChecksSet &checks, const String &name)
+void print_checks2(primitives::CppEmitter &ctx, const ChecksSet &checks, const String &name)
 {
     if (checks.size() > 2)
     {
