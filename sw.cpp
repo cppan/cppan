@@ -3,8 +3,10 @@
 
 void configure(Build &s)
 {
-    s.Settings.Native.LibrariesType = LibraryType::Static;
-    s.Settings.Native.ConfigurationType = ConfigurationType::ReleaseWithDebugInformation;
+    auto ss = s.createSettings();
+    ss.Native.LibrariesType = LibraryType::Static;
+    ss.Native.ConfigurationType = ConfigurationType::ReleaseWithDebugInformation;
+    s.addSettings(ss);
 }
 
 void build(Solution &s)
@@ -31,7 +33,7 @@ void build(Solution &s)
     common.Public += "VERSION_PATCH=5"_d;
     common.Public += "BUILD_NUMBER=0"_d;
     common.Public += "CPPAN_VERSION_STRING=0.2.5"_d;
-    if (s.Settings.TargetOS.Type == OSType::Windows)
+    if (common.getSettings().TargetOS.Type == OSType::Windows)
         common.Public += "UNICODE"_d;
 
     common.Public +=
