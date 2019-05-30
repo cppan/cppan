@@ -1150,7 +1150,7 @@ void CMakePrinter::prepare_rebuild() const
                 continue;
             if (f.path().filename().string() != cppan_stamp_filename)
                 continue;
-            remove_file(f);
+            primitives::filesystem::remove_file(f);
         }
     }
 }
@@ -1492,7 +1492,7 @@ void CMakePrinter::clear_cache() const
                 continue;
 
             auto fn = fc.path() / "CMakeCache.txt";
-            remove_file(fn);
+            primitives::filesystem::remove_file(fn);
         }
     }
 

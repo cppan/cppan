@@ -285,7 +285,7 @@ void Config::clear_vars_cache() const
     {
         if (!fs::is_regular_file(f))
             continue;
-        remove_file(f);
+        primitives::filesystem::remove_file(f);
     }
 }
 
