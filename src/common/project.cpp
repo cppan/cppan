@@ -137,9 +137,9 @@ bool is_valid_file_type(const MimeTypes &types, const path &p, const String &s, 
 bool is_valid_file_type(const MimeTypes &types, const path &p, String *error = nullptr, bool check_ext = false)
 {
     primitives::Command c;
-    c.program = "file";
-    c.args.push_back("-ib");
-    c.args.push_back(p.string());
+    c.setProgram("file");
+    c.arguments.push_back("-ib");
+    c.arguments.push_back(p.string());
     c.execute();
     return is_valid_file_type(types, p, c.out.text, error, check_ext);
 }
@@ -206,8 +206,8 @@ void check_file_types(const Files &files)
     o.close();
 
     primitives::Command c;
-    c.program = "sh";
-    c.args.push_back(fn.string());
+    c.setProgram("sh");
+    c.arguments.push_back(fn.string());
     std::error_code ec;
     c.execute(ec);
     fs::remove(fn);

@@ -730,8 +730,8 @@ std::optional<int> internal(const Strings &args)
             f >> std::quoted(prog) >> std::quoted(arg);
             primitives::Command c;
             c.working_directory = wd;
-            c.program = prog;
-            c.args.push_back(arg);
+            c.setProgram(prog);
+            c.arguments.push_back(arg);
             e.push([c]() mutable { c.execute(); });
         }
         e.wait();

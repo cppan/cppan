@@ -1343,45 +1343,45 @@ int CMakePrinter::generate(const BuildSettings &bs) const
     auto &s = Settings::get_local_settings();
 
     primitives::Command c;
-    c.args.push_back("cmake");
-    c.args.push_back("-H" + normalize_path(bs.source_directory));
-    c.args.push_back("-B" + normalize_path(bs.binary_directory));
+    c.arguments.push_back("cmake");
+    c.arguments.push_back("-H" + normalize_path(bs.source_directory));
+    c.arguments.push_back("-B" + normalize_path(bs.binary_directory));
     if (!s.c_compiler.empty())
-        c.args.push_back("-DCMAKE_C_COMPILER=" + s.c_compiler);
+        c.arguments.push_back("-DCMAKE_C_COMPILER=" + s.c_compiler);
     if (!s.cxx_compiler.empty())
-        c.args.push_back("-DCMAKE_CXX_COMPILER=" + s.cxx_compiler);
+        c.arguments.push_back("-DCMAKE_CXX_COMPILER=" + s.cxx_compiler);
     if (!s.host_c_compiler.empty())
-        c.args.push_back("-DCPPAN_HOST_C_COMPILER=" + s.host_c_compiler);
+        c.arguments.push_back("-DCPPAN_HOST_C_COMPILER=" + s.host_c_compiler);
     if (!s.host_cxx_compiler.empty())
-        c.args.push_back("-DCPPAN_HOST_CXX_COMPILER=" + s.host_cxx_compiler);
+        c.arguments.push_back("-DCPPAN_HOST_CXX_COMPILER=" + s.host_cxx_compiler);
     if (s.crosscompilation)
-        c.args.push_back("-DCPPAN_CROSSCOMPILATION="s + (s.crosscompilation ? "1" : "0"));
+        c.arguments.push_back("-DCPPAN_CROSSCOMPILATION="s + (s.crosscompilation ? "1" : "0"));
     if (!s.generator.empty())
     {
-        c.args.push_back("-G");
-        c.args.push_back(s.generator);
+        c.arguments.push_back("-G");
+        c.arguments.push_back(s.generator);
 
         //if (s.generator.find("Win64") != s.generator.npos)
-            //c.args.push_back("-Thost=x64");
+            //c.arguments.push_back("-Thost=x64");
     }
     if (!s.system_version.empty())
-        c.args.push_back("-DCMAKE_SYSTEM_VERSION=" + s.system_version);
+        c.arguments.push_back("-DCMAKE_SYSTEM_VERSION=" + s.system_version);
     if (!s.toolset.empty())
     {
-        c.args.push_back("-T");
-        c.args.push_back(s.toolset);
+        c.arguments.push_back("-T");
+        c.arguments.push_back(s.toolset);
     }
-    c.args.push_back("-DCMAKE_BUILD_TYPE=" + s.configuration);
+    c.arguments.push_back("-DCMAKE_BUILD_TYPE=" + s.configuration);
     if (s.debug_generated_cmake_configs)
-        c.args.push_back("-DCPPAN_CMAKE_VERBOSE="s + (s.cmake_verbose ? "1" : "0"));
-    c.args.push_back("-DCPPAN_BUILD_VERBOSE="s + (s.build_system_verbose ? "1" : "0"));
-    c.args.push_back("-DCPPAN_BUILD_WARNING_LEVEL="s + std::to_string(s.build_warning_level));
-    c.args.push_back("-DCPPAN_USE_CACHE="s + (s.use_cache ? "1" : "0"));
+        c.arguments.push_back("-DCPPAN_CMAKE_VERBOSE="s + (s.cmake_verbose ? "1" : "0"));
+    c.arguments.push_back("-DCPPAN_BUILD_VERBOSE="s + (s.build_system_verbose ? "1" : "0"));
+    c.arguments.push_back("-DCPPAN_BUILD_WARNING_LEVEL="s + std::to_string(s.build_warning_level));
+    c.arguments.push_back("-DCPPAN_USE_CACHE="s + (s.use_cache ? "1" : "0"));
     if (s.short_local_names)
-        c.args.push_back("-DCPPAN_SHORT_LOCAL_NAMES="s + (s.short_local_names ? "1" : "0"));
-    //c.args.push_back("-DCPPAN_TEST_RUN="s + (bs.test_run ? "1" : "0"));
+        c.arguments.push_back("-DCPPAN_SHORT_LOCAL_NAMES="s + (s.short_local_names ? "1" : "0"));
+    //c.arguments.push_back("-DCPPAN_TEST_RUN="s + (bs.test_run ? "1" : "0"));
     for (auto &o : s.cmake_options)
-        c.args.push_back(o);
+        c.arguments.push_back(o);
     for (auto &o : s.env)
     {
 #ifdef _WIN32
@@ -1458,18 +1458,18 @@ int CMakePrinter::build(const BuildSettings &bs) const
     LOG_INFO(logger, "Starting build process...");
 
     primitives::Command c;
-    c.args.push_back("cmake");
-    c.args.push_back("--build");
-    c.args.push_back(normalize_path(bs.binary_directory));
-    c.args.push_back("--config");
-    c.args.push_back(settings.configuration);
+    c.arguments.push_back("cmake");
+    c.arguments.push_back("--build");
+    c.arguments.push_back(normalize_path(bs.binary_directory));
+    c.arguments.push_back("--config");
+    c.arguments.push_back(settings.configuration);
 
     auto &us = Settings::get_local_settings();
     if (!us.additional_build_args.empty())
     {
-        c.args.push_back("--");
+        c.arguments.push_back("--");
         for (auto &a : us.additional_build_args)
-            c.args.push_back(a);
+            c.arguments.push_back(a);
     }
 
     return (int)run_command(settings, c).value();
@@ -3500,20 +3500,20 @@ void CMakePrinter::parallel_vars_check(const ParallelCheckOptions &o) const
 
         // run cmake
         primitives::Command c;
-        c.args.push_back(o.cmake_binary.string());
-        c.args.push_back("-H" + normalize_path(d));
-        c.args.push_back("-B" + normalize_path(d));
-        c.args.push_back("-G");
-        c.args.push_back(o.generator);
+        c.arguments.push_back(o.cmake_binary.string());
+        c.arguments.push_back("-H" + normalize_path(d));
+        c.arguments.push_back("-B" + normalize_path(d));
+        c.arguments.push_back("-G");
+        c.arguments.push_back(o.generator);
         if (!o.system_version.empty())
-            c.args.push_back("-DCMAKE_SYSTEM_VERSION=" + o.system_version);
+            c.arguments.push_back("-DCMAKE_SYSTEM_VERSION=" + o.system_version);
         if (!o.toolset.empty())
         {
-            c.args.push_back("-T");
-            c.args.push_back(o.toolset);
+            c.arguments.push_back("-T");
+            c.arguments.push_back(o.toolset);
         }
         if (!o.toolchain.empty())
-            c.args.push_back("-DCMAKE_TOOLCHAIN_FILE=" + o.toolchain);
+            c.arguments.push_back("-DCMAKE_TOOLCHAIN_FILE=" + o.toolchain);
 
         //
         auto print = [](const String &str, bool eof, String &out_line)
@@ -3557,11 +3557,11 @@ void CMakePrinter::parallel_vars_check(const ParallelCheckOptions &o) const
 #ifndef _WIN32
         // hide output for *nix as it very fast there
         /*if (N >= 4)
-            ret = command::execute(args);
+            ret = command::execute(arguments);
         else*/
 #endif
-            //ret = command::execute_and_capture(args, o);
-        //ret = command::execute(args);
+            //ret = command::execute_and_capture(arguments, o);
+        //ret = command::execute(arguments);
         std::error_code ec;
         c.execute(ec);
 
