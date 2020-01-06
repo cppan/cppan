@@ -91,12 +91,6 @@ enum class SettingsType
 
 using ProjectFlags = std::bitset<sizeof(uint64_t) * 8>;
 
-template <typename E>
-constexpr std::underlying_type_t<E> toIndex(E e)
-{
-    return static_cast<std::underlying_type_t<E>>(e);
-}
-
 String toString(ProjectType e);
 String toString(SettingsType e);
 

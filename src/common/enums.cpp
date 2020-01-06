@@ -16,6 +16,8 @@
 
 #include "enums.h"
 
+#include <primitives/enums.h>
+
 String toString(ProjectType e)
 {
     switch (e)

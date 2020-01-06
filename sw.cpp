@@ -1,12 +1,12 @@
 #pragma sw require header pub.egorpugin.primitives.tools.embedder-master
-#pragma sw require header org.sw.demo.lexxmark.winflexbison.bison-master
+#pragma sw require header org.sw.demo.lexxmark.winflexbison.bison
 
 void configure(Build &s)
 {
-    auto ss = s.createSettings();
+    /*auto ss = s.createSettings();
     ss.Native.LibrariesType = LibraryType::Static;
     ss.Native.ConfigurationType = ConfigurationType::ReleaseWithDebugInformation;
-    s.addSettings(ss);
+    s.addSettings(ss);*/
 }
 
 void build(Solution &s)
@@ -33,7 +33,7 @@ void build(Solution &s)
     common.Public += "VERSION_PATCH=5"_d;
     common.Public += "BUILD_NUMBER=0"_d;
     common.Public += "CPPAN_VERSION_STRING=0.2.5"_d;
-    if (common.getSettings().TargetOS.Type == OSType::Windows)
+    if (common.getBuildSettings().TargetOS.Type == OSType::Windows)
         common.Public += "UNICODE"_d;
 
     common.Public +=
@@ -67,12 +67,12 @@ void build(Solution &s)
     common.writeFileSafe("stamp.h.in", "\"" + std::to_string(v) + "\"");
     embed("pub.egorpugin.primitives.tools.embedder-master"_dep, common, "src/inserts/inserts.cpp.in");
 
-    auto [fc,bc] = gen_flex_bison("org.sw.demo.lexxmark.winflexbison-master"_dep, common,
+    auto [fc,bc] = gen_flex_bison("org.sw.demo.lexxmark.winflexbison"_dep, common,
         "src/bazel/bazel.ll", "src/bazel/bazel.yy",
                    {"--prefix=ll_bazel", "--header-file=" + normalize_path(common.BinaryDir / "bazel/lexer.h")});
     fc->addOutput(common.BinaryDir / "bazel/lexer.h");
 
-    auto [fc2,bc2] = gen_flex_bison("org.sw.demo.lexxmark.winflexbison-master"_dep, common,
+    auto [fc2,bc2] = gen_flex_bison("org.sw.demo.lexxmark.winflexbison"_dep, common,
         "src/comments/comments.ll", "src/comments/comments.yy",
                    {"--prefix=ll_comments", "--header-file=" + normalize_path(common.BinaryDir / "comments/lexer.h")});
     fc2->addOutput(common.BinaryDir / "comments/lexer.h");

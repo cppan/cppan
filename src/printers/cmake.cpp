@@ -878,7 +878,7 @@ endif()
         }
 
         if (has_build_deps)
-            ctx.addWithRelativeIndent(local);
+            ctx += local;
     }
 
     ctx.endif();
