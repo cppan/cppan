@@ -754,7 +754,7 @@ endif()
             ScopedDependencyCondition sdc(local, p, false);
             local.addLine("set(bd_" + p.variable_name + " \"");
             //local.addLine("@echo Building " + p.target_name + ": ${" + cfg + "}");
-            local.addNoNewLine("${at_symbol}");
+            local.addLine("${at_symbol}");
             local.addText("\\\"${CMAKE_COMMAND}\\\" ");
             //local.addText("-DCPPAN_BUILD_LEVEL=${CPPAN_BUILD_LEVEL} ");
             //local.addText("-DTARGET_VAR=" + p.variable_name + " "); // remove!
