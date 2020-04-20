@@ -1,14 +1,6 @@
 #pragma sw require header pub.egorpugin.primitives.tools.embedder-master
 #pragma sw require header org.sw.demo.lexxmark.winflexbison.bison
 
-void configure(Build &s)
-{
-    /*auto ss = s.createSettings();
-    ss.Native.LibrariesType = LibraryType::Static;
-    ss.Native.ConfigurationType = ConfigurationType::ReleaseWithDebugInformation;
-    s.addSettings(ss);*/
-}
-
 void build(Solution &s)
 {
     auto &p = s.addProject("cppan", "master");
@@ -37,14 +29,14 @@ void build(Solution &s)
         common.Public += "UNICODE"_d;
 
     common.Public +=
-        "org.sw.demo.boost.optional-1"_dep,
-        "org.sw.demo.boost.property_tree-1"_dep,
-        "org.sw.demo.boost.variant-1"_dep,
-        "org.sw.demo.boost.stacktrace-1"_dep,
+        "org.sw.demo.boost.optional"_dep,
+        "org.sw.demo.boost.property_tree"_dep,
+        "org.sw.demo.boost.variant"_dep,
+        "org.sw.demo.boost.stacktrace"_dep,
         //"org.sw.demo.apolukhin.stacktrace-master"_dep,
-        "org.sw.demo.sqlite3-3"_dep,
-        "org.sw.demo.fmt-*"_dep,
-        "org.sw.demo.imageworks.pystring-1"_dep,
+        "org.sw.demo.sqlite3"_dep,
+        "org.sw.demo.fmt"_dep,
+        "org.sw.demo.imageworks.pystring"_dep,
         "org.sw.demo.giovannidicanio.winreg-master"_dep,
 
         "pub.egorpugin.primitives.string-master"_dep,
@@ -89,6 +81,6 @@ void build(Solution &s)
 
     client += "src/client/.*"_rr, common,
         "pub.egorpugin.primitives.sw.main-master"_dep,
-        "org.sw.demo.boost.program_options-1"_dep,
+        "org.sw.demo.boost.program_options"_dep,
         "org.sw.demo.yhirose.cpp_linenoise-master"_dep;
 }
