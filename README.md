@@ -1,7 +1,5 @@
 ## [C++ Archive Network](https://cppan.org/)
 
-[![Build Status](https://travis-ci.org/cppan/cppan.svg?branch=v1)](https://travis-ci.org/cppan/cppan)
-[![Build status](https://ci.appveyor.com/api/projects/status/iacnrt6byhy8ox5v/branch/v1?svg=true)](https://ci.appveyor.com/project/egorpugin/cppan/branch/v1)
 ![Build status](https://github.com/cppan/cppan/workflows/CI/badge.svg)<br>
 
 ### Resources
