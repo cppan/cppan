@@ -639,7 +639,7 @@ void ServiceDatabase::setFileStamps(const Stamps &stamps) const
     }
     String q = "replace into FileStamps values ";
     for (auto &s : stamps)
-        q += "('" + normalize_path(s.first) + "', '" + std::to_string(s.second.time_since_epoch().count()) + "'),";
+        q += "('" + normalize_path(s.first) + "', '" + std::to_string((int64_t)s.second.time_since_epoch().count()) + "'),";
     q.resize(q.size() - 1);
     q += ";";
     db->execute(q);
