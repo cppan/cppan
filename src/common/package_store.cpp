@@ -34,7 +34,9 @@
 #include <primitives/hasher.h>
 #include <primitives/http.h>
 #include <primitives/templates.h>
+#ifdef _WIN32
 #include <primitives/win32helpers.h>
+#endif
 
 #include <primitives/log.h>
 //DECLARE_STATIC_LOGGER(logger, "package_store");

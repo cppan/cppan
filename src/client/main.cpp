@@ -38,7 +38,9 @@
 #include <primitives/pack.h>
 #include <primitives/templates.h>
 #include <primitives/executor.h>
+#ifdef _WIN32
 #include <primitives/win32helpers.h>
+#endif
 #include <primitives/sw/main.h>
 
 #include <iostream>
@@ -669,7 +671,7 @@ std::optional<int> internal(const Strings &args)
     {
 #ifndef _WIN32
         return 0;
-#endif
+#else
         if (args.size() != 4)
         {
             std::cout << "invalid number of arguments: " << args.size() << "\n";
@@ -679,6 +681,7 @@ std::optional<int> internal(const Strings &args)
         if (!create_link(args[2], args[3], "Link to CPPAN Solution"))
             return 1;
         return 0;
+#endif
     }
 
     if (args[1] == "internal-parallel-vars-check")

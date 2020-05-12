@@ -32,7 +32,9 @@
 #include <primitives/command.h>
 #include <primitives/date_time.h>
 #include <primitives/executor.h>
+#ifdef _WIN32
 #include <primitives/win32helpers.h>
+#endif
 
 #ifdef _WIN32
 #include <WinReg.hpp>

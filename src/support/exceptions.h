@@ -21,12 +21,8 @@
 #define REDEFINE_BOOST_USE_WINDOWS_H
 #endif
 
-#ifdef __linux__
-#define BOOST_STACKTRACE_USE_BACKTRACE
-#endif
-#include <boost/stacktrace.hpp>
-
 #include <boost/exception/all.hpp>
+#include <boost/stacktrace.hpp>
 
 #ifdef REDEFINE_BOOST_USE_WINDOWS_H
 #define BOOST_USE_WINDOWS_H
