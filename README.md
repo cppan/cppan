@@ -1,6 +1,6 @@
 ## [C++ Archive Network](https://cppan.org/)
 
-![Build status](https://github.com/cppan/cppan/workflows/CI/badge.svg)<br>
+![Build status](https://github.com/cppan/cppan/workflows/sw/badge.svg)<br>
 
 ### Resources
 
