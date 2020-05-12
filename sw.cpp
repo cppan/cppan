@@ -3,7 +3,7 @@
 
 void build(Solution &s)
 {
-    auto &p = s.addProject("cppan", "master");
+    auto &p = s.addProject("cppan", "0.2.5");
     p += Git("https://github.com/cppan/cppan", "", "v1");
 
     auto &common = p.addTarget<StaticLibraryTarget>("common");
@@ -33,7 +33,6 @@ void build(Solution &s)
         "org.sw.demo.boost.property_tree"_dep,
         "org.sw.demo.boost.variant"_dep,
         "org.sw.demo.boost.stacktrace"_dep,
-        //"org.sw.demo.apolukhin.stacktrace-master"_dep,
         "org.sw.demo.sqlite3"_dep,
         "org.sw.demo.fmt"_dep,
         "org.sw.demo.imageworks.pystring"_dep,
