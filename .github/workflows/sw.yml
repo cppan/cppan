@@ -1,3 +1,5 @@
+name: sw
+
 on: [push]
 
 jobs:
