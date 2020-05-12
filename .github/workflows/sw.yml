@@ -6,29 +6,37 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [windows-latest]
-        #os: [windows-latest, ubuntu-latest, macOS-latest]
+        os: [windows-latest, ubuntu-latest, macOS-latest]
 
     steps:
     - uses: actions/checkout@v1
+    - uses: egorpugin/sw-action@master
 
-    - name: Download SW
-      shell: cmake -P {0}
+    - name: Install (Linux)
+      if: runner.os == 'Linux'
       run: |
-        if (WIN32)
-          file(DOWNLOAD "https://software-network.org/client/sw-master-windows-client.zip" ./sw.zip)
-        elseif (APPLE)
-          file(DOWNLOAD "https://software-network.org/client/sw-master-macos-client.tar.gz" ./sw.zip)
-        else()
-          file(DOWNLOAD "https://software-network.org/client/sw-master-linux-client.tar.gz" ./sw.zip)
-        endif()
-    - name: Unpack SW
-      run: cmake -E tar xvf sw.zip
+        sudo apt update
+        sudo apt install flex bison
 
-    - name: chmod
-      run: chmod 755 sw
-      shell: sh
+    - name: Install (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install flex bison
 
-    - name: build
-      run: ./sw -static -platform x64 build
+    - name: build (non macOS)
+      if: runner.os != 'macOS'
+      run: ./sw -static build sw.cpp
+
+    - name: build (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        export PATH="/usr/local/opt/flex/bin:$PATH"
+        export PATH="/usr/local/opt/bison/bin:$PATH"
+        ./sw -static build sw.cpp
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: sw
+        path: .sw/out
