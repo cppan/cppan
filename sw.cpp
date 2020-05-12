@@ -7,7 +7,7 @@ void build(Solution &s)
     p += Git("https://github.com/cppan/cppan", "", "v1");
 
     auto &common = p.addTarget<StaticLibraryTarget>("common");
-    common.CPPVersion = CPPLanguageStandard::CPP17;
+    common += cpp17;
     common +=
         "src/common/.*"_rr,
         "src/printers/.*"_rr,
@@ -69,7 +69,7 @@ void build(Solution &s)
     fc2->addOutput(common.BinaryDir / "comments/lexer.h");
 
     auto &client = p.addTarget<ExecutableTarget>("client");
-    client.CPPVersion = CPPLanguageStandard::CPP17;
+    client += cpp17;
 
     // for rc.exe
     client += "VERSION_MAJOR=0"_d;

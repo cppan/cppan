@@ -295,6 +295,7 @@ int main(int argc, char *argv[])
 
     httpSettings.verbose = options["curl-verbose"].as<bool>();
     httpSettings.ignore_ssl_checks = options["ignore-ssl-checks"].as<bool>();
+    primitives::http::setupSafeTls(false, false, get_root_directory() / "roots.pem");
 
     // always first
     if (!r || options().count("help"))
