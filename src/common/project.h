@@ -185,7 +185,7 @@ struct Patch
 
     void load(const yaml &root);
     void save(yaml &root) const;
-    void patchSources(const Project &p, const Files &files) const;
+    void patchSources(const Project &p, const FilesSorted &files) const;
 };
 
 struct Project
@@ -255,7 +255,7 @@ public:
 
     // files to include into archive
     // also is used for enumerating sources (mutable for this)
-    mutable Files files;
+    mutable FilesSorted files;
 
     // root_directory where all files are stored
     path root_directory;
@@ -324,7 +324,7 @@ public:
 private:
     ProjectPath root_project;
 
-    const Files &getSources() const;
+    const FilesSorted &getSources() const;
     ProjectPath relative_name_to_absolute(const String &name);
 };
 

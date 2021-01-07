@@ -584,7 +584,7 @@ void Settings::save(const path &p) const
 {
     std::ofstream o(p);
     if (!o)
-        throw std::runtime_error("Cannot open file: " + p.u8string());
+        throw std::runtime_error("Cannot open file: " + to_printable_string(p));
     yaml root;
     root["remotes"][DEFAULT_REMOTE_NAME]["url"] = remotes[0].url;
     root["storage_dir"] = storage_dir.string();

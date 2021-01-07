@@ -500,7 +500,7 @@ PackageStore::read_packages_from_file(path p, const String &config_name, bool di
         throw std::runtime_error("Unknown file type " + p.string());
 
     // prepare names
-    auto pname = normalize_path(p);
+    auto pname = to_printable_string(normalize_path(p));
 #ifdef _WIN32 // || macos/ios?
     // prevent different project names for lower/upper case folders
     boost::to_lower(pname);

@@ -599,7 +599,7 @@ void self_upgrade()
     fn = fs::temp_directory_path() / unique_path();
     std::cout << "Downloading the latest client" << "\n";
     download_file(s.remotes[0].url + client, fn, 50_MB);
-    if (md5sum != md5(fn))
+    if (md5sum != md5_file(fn))
         throw std::runtime_error("Downloaded bad file (md5 check failed)");
 
     std::cout << "Unpacking" << "\n";

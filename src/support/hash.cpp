@@ -33,5 +33,5 @@ String hash_config(const String &c)
 
 bool check_file_hash(const path &fn, const String &hash)
 {
-    return hash == strong_file_hash(fn);
+    return hash == strong_file_hash_file(fn);
 }

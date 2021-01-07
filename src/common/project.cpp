@@ -200,7 +200,7 @@ void check_file_types(const Files &files)
     auto fn = get_temp_filename();
     std::ofstream o(fn, std::ios::binary | std::ios::out);
     if (!o)
-        throw std::runtime_error("Cannot open file for writing: " + fn.u8string());
+        throw std::runtime_error("Cannot open file for writing: " + to_printable_string(fn));
     for (auto &file : files)
         o << "file -ib " << normalize_path(file) << "\n";
     o.close();
@@ -367,7 +367,7 @@ void Patch::save(yaml &node) const
     save_replace(file_patches, "replace", UNIDIFF_PREFIX);
 }
 
-void Patch::patchSources(const Project &prj, const Files &files) const
+void Patch::patchSources(const Project &prj, const FilesSorted &files) const
 {
     auto rd = prj.pkg.getDirSrc();
     for (auto &[s, f] : file_patches)
@@ -492,7 +492,7 @@ void Project::findSources(path p)
 
     auto create_regex = [&p](const auto &e)
     {
-        auto s = normalize_path(p);
+        auto s = to_printable_string(normalize_path(p));
         s = escape_regex_symbols(s);
         if (!s.empty() && s.back() != '/')
             s += "/";
@@ -510,7 +510,7 @@ void Project::findSources(path p)
             if (!fs::is_regular_file(f))
                 continue;
 
-            auto s = normalize_path(f);
+            auto s = to_printable_string(normalize_path(f));
             for (auto &e : rgxs)
             {
                 if (!std::regex_match(s, e.second))
@@ -528,7 +528,7 @@ void Project::findSources(path p)
         auto to_remove = files;
         for (auto &f : files)
         {
-            auto s = normalize_path(f);
+            auto s = to_printable_string(normalize_path(f));
             for (auto &e : rgxs_exclude)
             {
                 if (!std::regex_match(s, e.second))
@@ -1292,8 +1292,8 @@ yaml Project::save() const
     ADD_IF_EQU_VAL(library_type, LibraryType::Module, "module");
     ADD_IF_EQU_VAL(executable_type, ExecutableType::Win32, "win32");
 
-    ADD_IF_NOT_EMPTY_VAL(root_directory, normalize_path(root_directory));
-    ADD_IF_NOT_EMPTY_VAL(unpack_directory, normalize_path(unpack_directory));
+    ADD_IF_NOT_EMPTY_VAL(root_directory, to_printable_string(normalize_path(root_directory)));
+    ADD_IF_NOT_EMPTY_VAL(unpack_directory, to_printable_string(normalize_path(unpack_directory)));
     ADD_IF_NOT_EMPTY(output_directory);
 
     ADD_IF_NOT_EMPTY(output_name);
@@ -1340,11 +1340,11 @@ yaml Project::save() const
     ADD_SET(include_hints, include_hints);
 
     for (auto &v : include_directories.public_)
-        root["include_directories"]["public"].push_back(normalize_path(v));
+        root["include_directories"]["public"].push_back(to_printable_string(normalize_path(v)));
     for (auto &v : include_directories.private_)
-        root["include_directories"]["private"].push_back(normalize_path(v));
+        root["include_directories"]["private"].push_back(to_printable_string(normalize_path(v)));
     for (auto &v : include_directories.interface_)
-        root["include_directories"]["interface"].push_back(normalize_path(v));
+        root["include_directories"]["interface"].push_back(to_printable_string(normalize_path(v)));
     saveOptionsMap(root, options);
     ADD_SET(aliases, aliases);
     ADD_SET(checks_prefixes, checks_prefixes);
@@ -1392,7 +1392,7 @@ void Project::patchSources() const
     patch.patchSources(*this, getSources());
 }
 
-const Files &Project::getSources() const
+const FilesSorted &Project::getSources() const
 {
     if (!files.empty())
         return files;

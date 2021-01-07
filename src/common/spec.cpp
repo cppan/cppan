@@ -28,7 +28,7 @@
 Specification download_specification(const Package &pkg)
 {
     auto url = path(SPEC_FILES_LOCATION) / pkg.ppath.toFileSystemPath() / (pkg.version.toString() + SPEC_FILE_EXTENSION);
-    auto spec = download_file(normalize_path(url));
+    auto spec = download_file(to_printable_string(normalize_path(url)));
     return read_specification(spec);
 }
 

@@ -259,7 +259,7 @@ void Resolver::download_and_unpack()
         write_file(hash_file, d.hash);
 
         LOG_INFO(logger, "Unpacking  : " << d.target_name << "...");
-        Files files;
+        FilesSorted files;
         try
         {
             files = unpack_file(fn, version_dir);
