@@ -88,8 +88,7 @@ String get_cmake_version()
     static const std::regex r("cmake version (\\S+)");
 
     primitives::Command c;
-    c.setProgram("cmake");
-    c.arguments = { "--version" };
+    c.arguments = { "cmake", "--version" };
     std::error_code ec;
     c.execute(ec);
     if (ec)

@@ -71,7 +71,7 @@ bool AccessTable::must_update_contents(const path &p) const
         return true;
     if (data.do_not_update)
         return false;
-    if (!is_under_root(p, directories.storage_dir_etc))
+    if (!is_under_root_by_prefix_path(p, directories.storage_dir_etc))
         return true;
     return fs::last_write_time(p) != data.stamps[p];
 }
@@ -89,7 +89,7 @@ void AccessTable::update_contents(const path &p, const String &s) const
 
 void AccessTable::write_if_older(const path &p, const String &s) const
 {
-    if (!is_under_root(p, directories.storage_dir_etc))
+    if (!is_under_root_by_prefix_path(p, directories.storage_dir_etc))
     {
         write_file_if_different(p, s);
         return;
@@ -108,7 +108,7 @@ void AccessTable::remove(const path &p) const
     std::set<path> rm;
     for (auto &s : data.stamps)
     {
-        if (is_under_root(s.first, p))
+        if (is_under_root_by_prefix_path(s.first, p))
             rm.insert(s.first);
     }
     for (auto &s : rm)

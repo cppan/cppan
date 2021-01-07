@@ -767,7 +767,7 @@ void Project::load(const yaml &root)
         {
             auto cp = current_thread_path();
             p = n.template as<String>();
-            if (!is_under_root(cp / p, cp))
+            if (!is_under_root_by_prefix_path(cp / p, cp))
                 throw std::runtime_error("'" + s + "' must not point outside the current dir: " + p.string() + ", " + cp.string());
         });
     };

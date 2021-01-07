@@ -1193,9 +1193,17 @@ IdDependencies PackagesDatabase::findDependencies(const Packages &deps) const
     return dds;
 }
 
+static auto str2time(const String &s)
+{
+    std::tm t = {};
+    std::istringstream ss(s);
+    ss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S");
+    return Clock::from_time_t(mktime(&t));
+}
+
 void check_version_age(const TimePoint &t1, const char *created)
 {
-    auto d = t1 - string2timepoint(created);
+    auto d = t1 - str2time(created);
     auto mins = std::chrono::duration_cast<std::chrono::minutes>(d).count();
     // multiple by 2 because first time interval goes for uploading db
     // and during the second one, the packet is really young
