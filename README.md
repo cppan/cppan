@@ -1,12 +1,17 @@
-## [C++ Archive Network](https://cppan.org/)
+## C++ Archive Network
 
 ![Build status](https://github.com/cppan/cppan/workflows/sw/badge.svg)<br>
 
+CPPAN website and server were shut down on 12.01.2021 after 5 years of work.
+
+Further development, renamed and improved project (aka cppan v2 internally) can be found at https://github.com/SoftwareNetwork/sw
+
+It is possible to upgrade workflows to SW easily.
+
 ### Resources
 
-- Homepage: https://cppan.org/
 - Docs: https://github.com/cppan/cppan/blob/v1/doc/
-- Download: https://cppan.org/client/
+- Download: https://github.com/cppan/binaries
 - Issue tracking: https://github.com/cppan/cppan/issues
 - Forum: https://groups.google.com/forum/#!forum/cppan
 
