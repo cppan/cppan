@@ -1977,29 +1977,29 @@ String Project::print_cpp2()
 
         auto print_obj = [&ctx, &type](auto &obj, auto &sysobj, auto f, const String &ending)
         {
-            for (auto &[k, v] : obj)
-                f(k, v, ending, type);
-            for (auto &[k2, v2] : sysobj)
+            for (auto &p : obj)
+                f(p.first, p.second, ending, type);
+            for (auto &p2 : sysobj)
             {
-                if (k2 == "win32")
+                if (p2.first == "win32")
                 {
                     ctx.beginBlock("if (s.Settings.TargetOS.Type == OSType::Windows)");
-                    for (auto &[k, v] : v2)
-                        f(k, v, ending);
+                    for (auto &p : p2.second)
+                        f(p.first, p.second, ending);
                     ctx.endBlock();
                 }
-                else if (k2 == "unix")
+                else if (p2.first == "unix")
                 {
                     ctx.beginBlock("if (s.Settings.TargetOS.Type != OSType::Windows)");
-                    for (auto &[k, v] : v2)
-                        f(k, v, ending);
+                    for (auto &p : p2.second)
+                        f(p.first, p.second, ending);
                     ctx.endBlock();
                 }
-                else if (k2 == "msvc")
+                else if (p2.first == "msvc")
                 {
                     ctx.beginBlock("if (s.Settings.Native.CompilerType == CompilerType::MSVC)");
-                    for (auto &[k, v] : v2)
-                        f(k, v, ending);
+                    for (auto &p : p2.second)
+                        f(p.first, p.second, ending);
                     ctx.endBlock();
                 }
             }
