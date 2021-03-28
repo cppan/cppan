@@ -41,6 +41,7 @@
 #ifdef _WIN32
 #include <primitives/win32helpers.h>
 #endif
+#define SW_CUSTOM_PROGRAM_NAME
 #include <primitives/sw/main.h>
 
 #include <iostream>
@@ -1093,11 +1094,7 @@ ApiResult api_call(const String &cmd, const Strings &args)
     return ApiResult::NotHandled;
 }
 
-#ifdef _WIN32
-__declspec(dllexport)
-#else
-__attribute__((visibility("default")))
-#endif
+EXPORT_FROM_EXECUTABLE
 String getProgramName()
 {
     return "cppan";

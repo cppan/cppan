@@ -82,6 +82,7 @@ void build(Solution &s)
 
     auto &client = p.addTarget<ExecutableTarget>("client");
     {
+        client.PackageDefinitions = true;
         client += cpp20;
 
         // for rc.exe
