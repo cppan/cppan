@@ -6,9 +6,11 @@ void build(Solution &s)
     auto &p = s.addProject("cppan", "0.2.5");
     p += Git("https://github.com/cppan/cppan", "", "v1");
 
+    auto cppstd = cpp23;
+
     auto &common = p.addTarget<StaticLibraryTarget>("common");
     {
-        common += cpp20;
+        common += cppstd;
         common +=
             "src/common/.*"_rr,
             "src/printers/.*"_rr,
@@ -83,7 +85,7 @@ void build(Solution &s)
     auto &client = p.addTarget<ExecutableTarget>("client");
     {
         client.PackageDefinitions = true;
-        client += cpp20;
+        client += cppstd;
 
         // for rc.exe
         client += "VERSION_MAJOR=0"_d;
