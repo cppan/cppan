@@ -46,7 +46,7 @@ using primitives::Command;
 
 void applyVersion(String &s, const Version &v)
 {
-    s = fmt::format(s,
+    s = fmt::format(fmt::runtime(s),
         fmt::arg("M", (int)v.major),
         fmt::arg("m", (int)v.minor),
         fmt::arg("p", (int)v.patch),
