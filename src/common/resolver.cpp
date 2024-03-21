@@ -560,7 +560,7 @@ Resolver::Dependencies getDependenciesFromRemote(const Packages &deps, const Rem
                 req.type = HttpRequest::Post;
                 req.url = current_remote->url + "/api/find_dependencies";
                 req.data = ptree2string(request);
-                resp = url_request(req);
+                resp = std::move(url_request(req));
                 if (resp.http_code != 200)
                     throw std::runtime_error("Cannot get deps");
                 dependency_tree = string2ptree(resp.response);
