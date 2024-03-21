@@ -24,6 +24,7 @@
 #include "spec.h"
 
 #include <primitives/command.h>
+#include <primitives/file_iterator.h>
 #include <primitives/pack.h>
 #include <primitives/templates.h>
 
