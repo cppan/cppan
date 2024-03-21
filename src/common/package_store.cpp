@@ -46,6 +46,14 @@ PackageStore rd;
 
 Strings extract_comments(const String &s);
 
+// put it here for now
+Executor &getExecutor(Executor *e = nullptr)
+{
+    static Executor *ex;
+    if (e) ex = e;
+    return *ex;
+}
+
 void download_file(path &fn)
 {
     // this function checks if fn is url,

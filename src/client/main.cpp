@@ -67,6 +67,8 @@ void self_upgrade_copy(const path &dst);
 std::optional<int> internal(const Strings &args);
 void command_init(const Strings &args);
 
+Executor &getExecutor(Executor * = nullptr);
+
 int main(int argc, char *argv[])
 {
     // globals init
